@@ -125,6 +125,38 @@ export interface SendFriendRequestInput {
   addresseeId: number;
 }
 
+/**
+ * A single entry in the caller's personal contacts book
+ */
+export interface ContactItem {
+  id: number;
+  /** Custom name chosen by the owner — private, never visible to others */
+  localName: string;
+  /** The contact's Pocket Number (e.g. PN-100001) */
+  pocketNumber: string;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+export interface AddContactInput {
+  /** Pocket Number of the user to add (e.g. PN-100001) */
+  pocketNumber: string;
+  /**
+     * Optional custom name. Defaults to the contact's real name if omitted.
+     * @minLength 1
+     * @maxLength 50
+     */
+  localName?: string;
+}
+
+export interface UpdateContactInput {
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  localName: string;
+}
+
 export type Register201 = {
   message: string;
   /** OTP code for testing — present only in development mode, never in production */

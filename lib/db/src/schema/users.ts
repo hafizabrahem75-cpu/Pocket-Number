@@ -27,6 +27,25 @@ export const pocketNumberCounterTable = pgTable("pocket_number_counter", {
   lastNumber: integer("last_number").notNull().default(100000),
 });
 
+// Personal contacts book — each user keeps their own list with custom local names
+export const contactsTable = pgTable(
+  "contacts",
+  {
+    id: serial("id").primaryKey(),
+    ownerId: integer("owner_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    contactUserId: integer("contact_user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    // The custom name the owner chose — never visible to anyone else
+    localName: text("local_name").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [unique("unique_contact").on(table.ownerId, table.contactUserId)],
+);
+
 // Friendship / contact network
 export const friendshipsTable = pgTable(
   "friendships",
@@ -55,4 +74,5 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
 export type OtpCode = typeof otpCodesTable.$inferSelect;
+export type Contact = typeof contactsTable.$inferSelect;
 export type Friendship = typeof friendshipsTable.$inferSelect;

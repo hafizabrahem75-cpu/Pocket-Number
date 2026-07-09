@@ -29,8 +29,9 @@
 ## Where things live
 
 - `lib/api-spec/openapi.yaml` — API contract source of truth
-- `lib/db/src/schema/users.ts` — users, otp_codes, pocket_number_counter tables
+- `lib/db/src/schema/users.ts` — users, otp_codes, pocket_number_counter, contacts, friendships tables
 - `artifacts/api-server/src/routes/auth.ts` — all auth routes
+- `artifacts/api-server/src/routes/contacts.ts` — contacts CRUD routes
 - `artifacts/api-server/src/lib/jwt.ts` — JWT sign/verify
 - `artifacts/api-server/src/lib/otp.ts` — OTP generation & sending
 - `artifacts/api-server/src/middlewares/auth.ts` — requireAuth middleware
@@ -47,7 +48,8 @@
 
 ## Architecture decisions
 
-- **Pocket numbers** use a counter table (`pocket_number_counter`) with atomic SQL `UPDATE ... RETURNING` to avoid race conditions. Format: `PN-{lastNumber}` starting at PN-100001.
+- **Pocket numbers** use a counter table (`pocket_number_counter`) with atomic SQL `UPDATE ... RETURNING` to avoid race conditions. Format: `PN-{lastNumber}` starting at PN-100001. The column is `text` with a UNIQUE constraint — ready to hold any future phone-like format without schema changes.
+- **Contacts system** uses a dedicated `contacts` table (owner_id → contact_user_id → local_name) separate from `friendships`. Contacts are unilateral (no approval needed). The `local_name` is private to the owner and never visible to the contact or anyone else. Uniqueness is enforced at DB level (`UNIQUE(owner_id, contact_user_id)`). Duplicate insert returns 409. All mutation routes include `ownerId` in both the pre-check and the mutation WHERE clause (defense-in-depth).
 - **JWT stored in localStorage** — acceptable for MVP; future phases should migrate to HttpOnly cookies.
 - **OTP NOT logged** in production — dev mode writes to stderr only. Replace `sendOtpEmail` in `otp.ts` with a real email provider (Resend, SendGrid) in Phase 2.
 - **No `format: email` in OpenAPI spec** — Orval generates `zod.email()` which conflicts with the current zod setup. Use `type: string` with pattern validation instead.

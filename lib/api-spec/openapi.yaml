@@ -16,6 +16,8 @@ tags:
     description: User search
   - name: friends
     description: Friend requests and contacts
+  - name: contacts
+    description: Personal contacts book
 paths:
   /healthz:
     get:
@@ -433,6 +435,144 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /contacts:
+    get:
+      operationId: getContacts
+      tags: [contacts]
+      summary: Get my contacts list
+      description: Returns the caller's personal contacts book with local names
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContactItem"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: addContact
+      tags: [contacts]
+      summary: Add a contact by Pocket Number
+      description: Adds a user to the caller's personal contacts book with an optional local name
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddContactInput"
+      responses:
+        "201":
+          description: Contact added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactItem"
+        "400":
+          description: Invalid input or cannot add self
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Pocket Number not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already in contacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /contacts/{id}:
+    put:
+      operationId: updateContact
+      tags: [contacts]
+      summary: Update the local name of a contact
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactInput"
+      responses:
+        "200":
+          description: Contact updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactItem"
+        "404":
+          description: Contact not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteContact
+      tags: [contacts]
+      summary: Remove a contact
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contact removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Contact not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -624,3 +764,51 @@ components:
           type: integer
       required:
         - addresseeId
+
+    ContactItem:
+      type: object
+      description: A single entry in the caller's personal contacts book
+      properties:
+        id:
+          type: integer
+        localName:
+          type: string
+          description: Custom name chosen by the owner — private, never visible to others
+        pocketNumber:
+          type: string
+          description: The contact's Pocket Number (e.g. PN-100001)
+        isVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - localName
+        - pocketNumber
+        - isVerified
+        - createdAt
+
+    AddContactInput:
+      type: object
+      properties:
+        pocketNumber:
+          type: string
+          description: Pocket Number of the user to add (e.g. PN-100001)
+        localName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Optional custom name. Defaults to the contact's real name if omitted.
+      required:
+        - pocketNumber
+
+    UpdateContactInput:
+      type: object
+      properties:
+        localName:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+        - localName

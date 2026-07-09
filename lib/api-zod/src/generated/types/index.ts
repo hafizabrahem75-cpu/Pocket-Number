@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addContactInput';
 export * from './authResponse';
+export * from './contactItem';
 export * from './errorResponse';
 export * from './friendEntry';
 export * from './friendRequestItem';
@@ -22,5 +24,6 @@ export * from './resendOtp200';
 export * from './resendOtpInput';
 export * from './searchUsersParams';
 export * from './sendFriendRequestInput';
+export * from './updateContactInput';
 export * from './user';
 export * from './verifyOtpInput';

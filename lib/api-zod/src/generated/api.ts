@@ -280,3 +280,75 @@ export const CancelFriendRequestResponse = zod.object({
 })
 
 
+/**
+ * Returns the caller's personal contacts book with local names
+ * @summary Get my contacts list
+ */
+export const GetContactsResponseItem = zod.object({
+  "id": zod.number(),
+  "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
+  "pocketNumber": zod.string().describe('The contact\'s Pocket Number (e.g. PN-100001)'),
+  "isVerified": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}).describe('A single entry in the caller\'s personal contacts book')
+export const GetContactsResponse = zod.array(GetContactsResponseItem)
+
+
+/**
+ * Adds a user to the caller's personal contacts book with an optional local name
+ * @summary Add a contact by Pocket Number
+ */
+export const addContactBodyLocalNameMax = 50;
+
+
+
+export const AddContactBody = zod.object({
+  "pocketNumber": zod.string().describe('Pocket Number of the user to add (e.g. PN-100001)'),
+  "localName": zod.string().min(1).max(addContactBodyLocalNameMax).optional().describe('Optional custom name. Defaults to the contact\'s real name if omitted.')
+})
+
+export const AddContactResponse = zod.object({
+  "id": zod.number(),
+  "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
+  "pocketNumber": zod.string().describe('The contact\'s Pocket Number (e.g. PN-100001)'),
+  "isVerified": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}).describe('A single entry in the caller\'s personal contacts book')
+
+
+/**
+ * @summary Update the local name of a contact
+ */
+export const UpdateContactParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateContactBodyLocalNameMax = 50;
+
+
+
+export const UpdateContactBody = zod.object({
+  "localName": zod.string().min(1).max(updateContactBodyLocalNameMax)
+})
+
+export const UpdateContactResponse = zod.object({
+  "id": zod.number(),
+  "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
+  "pocketNumber": zod.string().describe('The contact\'s Pocket Number (e.g. PN-100001)'),
+  "isVerified": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}).describe('A single entry in the caller\'s personal contacts book')
+
+
+/**
+ * @summary Remove a contact
+ */
+export const DeleteContactParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteContactResponse = zod.object({
+  "message": zod.string()
+})
+
+

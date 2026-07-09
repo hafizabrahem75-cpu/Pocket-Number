@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import authRouter from "./auth";
 import usersRouter from "./users";
 import friendsRouter from "./friends";
+import contactsRouter from "./contacts";
 
 const router: IRouter = Router();
 
@@ -10,5 +11,6 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(usersRouter);
 router.use(friendsRouter);
+router.use(contactsRouter);
 
 export default router;
