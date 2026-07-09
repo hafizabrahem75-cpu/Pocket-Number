@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetInbox, getGetInboxQueryKey } from "@workspace/api-client-react";
 import type { ConversationListItem } from "@workspace/api-client-react";
 import { MessageCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ConversationView from "./ConversationView";
+import type { ChatTarget } from "@/contexts/ChatLauncherContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -82,14 +83,31 @@ function ConversationRow({
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export default function MessagesTab() {
-  const [openConv, setOpenConv] = useState<ConversationListItem | null>(null);
+export default function MessagesTab({
+  initialPeer,
+  onInitialPeerConsumed,
+}: {
+  /** A target to open a conversation with immediately (e.g. from contacts/search), even if no messages exist yet. */
+  initialPeer?: ChatTarget | null;
+  onInitialPeerConsumed?: () => void;
+} = {}) {
+  const [openConv, setOpenConv] = useState<ChatTarget | null>(null);
 
   const { data, isLoading } = useGetInbox({
     query: { queryKey: getGetInboxQueryKey(), refetchInterval: 5_000, staleTime: 0 },
   });
 
   const conversations = data?.conversations ?? [];
+
+  // Open a conversation requested from another page (contacts/search),
+  // even when no prior messages exist between the two users.
+  useEffect(() => {
+    if (initialPeer) {
+      setOpenConv(initialPeer);
+      onInitialPeerConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPeer]);
 
   return (
     <>

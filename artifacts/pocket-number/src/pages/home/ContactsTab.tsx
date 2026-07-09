@@ -7,6 +7,7 @@ import {
   useUpdateContact,
   useDeleteContact,
   getGetContactsQueryKey,
+  searchUsers,
 } from "@workspace/api-client-react";
 import type { ContactItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,9 +21,11 @@ import {
   Check,
   Search,
   ChevronRight,
+  MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useChatLauncher } from "@/contexts/ChatLauncherContext";
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -231,6 +234,32 @@ function ContactRow({
   onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [messaging, setMessaging] = useState(false);
+  const { requestChat } = useChatLauncher();
+  const { toast } = useToast();
+
+  // Contacts only store the pocket number locally — resolve the underlying
+  // user id via the existing user-search endpoint (no messages/API changes).
+  const handleMessage = async () => {
+    setExpanded(false);
+    setMessaging(true);
+    try {
+      const peer = await searchUsers({ q: contact.pocketNumber });
+      requestChat({
+        peerId: peer.id,
+        peerName: contact.localName,
+        peerPocketNumber: peer.pocketNumber,
+      });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "تعذّر بدء المحادثة",
+        description: "لم يُعثر على هذا المستخدم",
+      });
+    } finally {
+      setMessaging(false);
+    }
+  };
 
   return (
     <div className="border-b border-border last:border-0">
@@ -257,6 +286,18 @@ function ContactRow({
       {/* Expanded actions */}
       {expanded && (
         <div className="flex gap-2 px-4 pb-3 animate-in fade-in slide-in-from-top-1 duration-150">
+          <button
+            onClick={handleMessage}
+            disabled={messaging}
+            className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/8 hover:bg-primary/15 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {messaging ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <MessageCircle className="w-3.5 h-3.5" />
+            )}
+            رسالة
+          </button>
           <button
             onClick={() => { setExpanded(false); onEdit(); }}
             className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/8 hover:bg-primary/15 px-3 py-2 rounded-lg transition-colors"

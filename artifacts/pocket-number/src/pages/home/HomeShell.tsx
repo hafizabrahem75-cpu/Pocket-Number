@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MobileLayout } from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChatLauncher } from "@/contexts/ChatLauncherContext";
 import { useLocation } from "wouter";
 import { Phone, MessageCircle, Users, Clock, Settings, Search } from "lucide-react";
 import { useHeartbeatPing } from "@/hooks/useHeartbeatPing";
@@ -24,15 +25,26 @@ const tabs: { id: Tab; label: string; icon: typeof Phone }[] = [
 export default function HomeShell() {
   const [activeTab, setActiveTab] = useState<Tab>("contacts");
   const { user } = useAuth();
+  const { pendingTarget, consumePendingTarget } = useChatLauncher();
   const [, setLocation] = useLocation();
   useHeartbeatPing();
+
+  // If another page (contacts/search) requested a chat, switch to the messages tab
+  // so MessagesTab can pick up `pendingTarget` and open the conversation.
+  useEffect(() => {
+    if (pendingTarget) {
+      setActiveTab("messages");
+    }
+  }, [pendingTarget]);
 
   const renderTab = () => {
     switch (activeTab) {
       case "calls":
         return <CallsTab />;
       case "messages":
-        return <MessagesTab />;
+        return (
+          <MessagesTab initialPeer={pendingTarget} onInitialPeerConsumed={consumePendingTarget} />
+        );
       case "contacts":
         return <ContactsTab />;
       case "history":

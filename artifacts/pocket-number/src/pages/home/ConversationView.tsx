@@ -10,7 +10,8 @@ import {
   getGetMessageThreadQueryKey,
   getMessageThread,
 } from "@workspace/api-client-react";
-import type { ConversationListItem, MessageItem } from "@workspace/api-client-react";
+import type { MessageItem } from "@workspace/api-client-react";
+import type { ChatTarget } from "@/contexts/ChatLauncherContext";
 import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -144,7 +145,7 @@ export default function ConversationView({
   peer,
   onBack,
 }: {
-  peer: ConversationListItem;
+  peer: ChatTarget;
   onBack: () => void;
 }) {
   const { user } = useAuth();

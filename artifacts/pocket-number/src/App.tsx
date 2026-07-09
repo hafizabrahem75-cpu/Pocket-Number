@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ChatLauncherProvider } from '@/contexts/ChatLauncherContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 import Splash from '@/pages/Splash';
@@ -56,7 +57,9 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <AuthProvider>
-            <Router />
+            <ChatLauncherProvider>
+              <Router />
+            </ChatLauncherProvider>
           </AuthProvider>
         </WouterRouter>
         <Toaster />

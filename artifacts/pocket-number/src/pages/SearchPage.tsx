@@ -24,7 +24,9 @@ import {
   UserPlus,
   CheckCircle2,
   UserX,
+  MessageCircle,
 } from "lucide-react";
+import { useChatLauncher } from "@/contexts/ChatLauncherContext";
 
 // ── Status Badge ─────────────────────────────────────────────────────────────
 
@@ -56,9 +58,16 @@ function ResultCard({ user }: { user: PublicUser }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const addContact = useAddContact();
+  const { requestChat } = useChatLauncher();
+  const [, setLocation] = useLocation();
 
   const isSelf = me && user.id === me.id;
   const [added, setAdded] = useState(false);
+
+  const handleMessage = () => {
+    requestChat({ peerId: user.id, peerName: user.name, peerPocketNumber: user.pocketNumber });
+    setLocation("/home");
+  };
 
   const handleAdd = () => {
     addContact.mutate(
@@ -134,30 +143,43 @@ function ResultCard({ user }: { user: PublicUser }) {
       </div>
 
       {/* Action */}
-      <div className="px-6 py-5">
+      <div className="px-6 py-5 space-y-2.5">
         {isSelf ? (
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-1">
             <UserX className="w-4 h-4" />
             هذا رقمك الخاص
           </div>
-        ) : added ? (
-          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 py-1">
-            <CheckCircle2 className="w-5 h-5" />
-            تمت الإضافة إلى جهات الاتصال
-          </div>
         ) : (
-          <Button
-            className="w-full rounded-xl h-12 text-base font-semibold"
-            onClick={handleAdd}
-            disabled={addContact.isPending}
-          >
-            {addContact.isPending ? (
-              <Loader2 className="w-5 h-5 animate-spin ml-2" />
+          <>
+            <Button
+              variant="outline"
+              className="w-full rounded-xl h-12 text-base font-semibold"
+              onClick={handleMessage}
+            >
+              <MessageCircle className="w-5 h-5 ml-2" />
+              إرسال رسالة
+            </Button>
+
+            {added ? (
+              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 py-1">
+                <CheckCircle2 className="w-5 h-5" />
+                تمت الإضافة إلى جهات الاتصال
+              </div>
             ) : (
-              <UserPlus className="w-5 h-5 ml-2" />
+              <Button
+                className="w-full rounded-xl h-12 text-base font-semibold"
+                onClick={handleAdd}
+                disabled={addContact.isPending}
+              >
+                {addContact.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin ml-2" />
+                ) : (
+                  <UserPlus className="w-5 h-5 ml-2" />
+                )}
+                إضافة إلى جهات الاتصال
+              </Button>
             )}
-            إضافة إلى جهات الاتصال
-          </Button>
+          </>
         )}
       </div>
     </div>
