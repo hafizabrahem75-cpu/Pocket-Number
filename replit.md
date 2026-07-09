@@ -37,6 +37,14 @@
 - `artifacts/pocket-number/src/contexts/AuthContext.tsx` — global auth state + setAuthTokenGetter
 - `artifacts/pocket-number/src/pages/` — Splash, Register, VerifyOtp, Login, Profile, Settings
 
+## Contacts system design
+
+- كل مستخدم لديه **دفتر جهات اتصال خاص به** — مستقل تماماً عن بقية المستخدمين.
+- الاسم الحقيقي والبريد الإلكتروني محفوظان في حساب المالك فقط، ولا يُشاركان تلقائياً.
+- عند إضافة مستخدم آخر عبر Pocket Number، يمكن حفظه **بأي اسم مخصص** في دفتر الجهات الخاص بك.
+- الاسم المخصص **لا يُغيّر** اسم صاحب الحساب الحقيقي، ولا يظهر لأي مستخدم آخر.
+- هذا التصميم هو الأساس الذي تُبنى عليه جميع المراحل القادمة (المراسلة، المكالمات، إلخ).
+
 ## Architecture decisions
 
 - **Pocket numbers** use a counter table (`pocket_number_counter`) with atomic SQL `UPDATE ... RETURNING` to avoid race conditions. Format: `PN-{lastNumber}` starting at PN-100001.
