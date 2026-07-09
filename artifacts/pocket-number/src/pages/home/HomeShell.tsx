@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MobileLayout } from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
-import { Phone, MessageCircle, Users, Clock, Settings } from "lucide-react";
+import { Phone, MessageCircle, Users, Clock, Settings, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ContactsTab from "./ContactsTab";
 import CallsTab from "./CallsTab";
@@ -48,19 +48,28 @@ export default function HomeShell() {
           <p className="text-xs text-muted-foreground font-medium">مرحباً،</p>
           <p className="text-base font-bold text-foreground leading-tight">{user?.name ?? "—"}</p>
         </div>
-        <button
-          onClick={() => setLocation("/profile")}
-          className="flex flex-col items-end gap-0.5"
-          aria-label="الملف الشخصي"
-        >
-          <span className="text-[10px] text-muted-foreground font-medium">رقمك الخاص</span>
-          <span
-            className="text-sm font-black text-primary tracking-wider font-mono bg-primary/8 px-2.5 py-0.5 rounded-full"
-            dir="ltr"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setLocation("/search")}
+            className="w-9 h-9 rounded-full bg-secondary/60 hover:bg-secondary flex items-center justify-center transition-colors"
+            aria-label="البحث عن مستخدم"
           >
-            {user?.pocketNumber ?? "—"}
-          </span>
-        </button>
+            <Search className="w-4 h-4 text-secondary-foreground" />
+          </button>
+          <button
+            onClick={() => setLocation("/profile")}
+            className="flex flex-col items-end gap-0.5"
+            aria-label="الملف الشخصي"
+          >
+            <span className="text-[10px] text-muted-foreground font-medium">رقمك الخاص</span>
+            <span
+              className="text-sm font-black text-primary tracking-wider font-mono bg-primary/8 px-2.5 py-0.5 rounded-full"
+              dir="ltr"
+            >
+              {user?.pocketNumber ?? "—"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Tab content */}

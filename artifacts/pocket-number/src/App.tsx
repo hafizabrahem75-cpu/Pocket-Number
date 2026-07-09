@@ -12,6 +12,7 @@ import Login from '@/pages/Login';
 import HomeShell from '@/pages/home/HomeShell';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
+import SearchPage from '@/pages/SearchPage';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient({
@@ -39,6 +40,9 @@ function Router() {
       </Route>
       <Route path="/settings">
         {() => <ProtectedRoute component={Settings} />}
+      </Route>
+      <Route path="/search">
+        {() => <ProtectedRoute component={SearchPage} />}
       </Route>
       
       <Route component={NotFound} />
