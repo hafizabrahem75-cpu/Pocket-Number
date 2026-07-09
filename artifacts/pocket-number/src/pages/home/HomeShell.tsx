@@ -3,6 +3,7 @@ import { MobileLayout } from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { Phone, MessageCircle, Users, Clock, Settings, Search } from "lucide-react";
+import { useHeartbeatPing } from "@/hooks/useHeartbeatPing";
 import { cn } from "@/lib/utils";
 import ContactsTab from "./ContactsTab";
 import CallsTab from "./CallsTab";
@@ -24,6 +25,7 @@ export default function HomeShell() {
   const [activeTab, setActiveTab] = useState<Tab>("contacts");
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  useHeartbeatPing();
 
   const renderTab = () => {
     switch (activeTab) {

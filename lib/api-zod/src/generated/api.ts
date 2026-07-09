@@ -57,10 +57,12 @@ export const VerifyOtpResponse = zod.object({
   "token": zod.string(),
   "user": zod.object({
   "id": zod.number(),
-  "pocketNumber": zod.string().describe('Internal number in format PN-100001'),
+  "pocketNumber": zod.string().describe('9-digit unique number with prefix 71\/73\/77\/700 (e.g. 713456789)'),
   "name": zod.string(),
   "email": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "createdAt": zod.coerce.date()
 })
 })
@@ -94,17 +96,19 @@ export const LoginResponse = zod.object({
   "token": zod.string(),
   "user": zod.object({
   "id": zod.number(),
-  "pocketNumber": zod.string().describe('Internal number in format PN-100001'),
+  "pocketNumber": zod.string().describe('9-digit unique number with prefix 71\/73\/77\/700 (e.g. 713456789)'),
   "name": zod.string(),
   "email": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "createdAt": zod.coerce.date()
 })
 })
 
 
 /**
- * @summary Logout
+ * @summary Logout and mark user offline
  */
 export const LogoutResponse = zod.object({
   "message": zod.string()
@@ -116,11 +120,21 @@ export const LogoutResponse = zod.object({
  */
 export const GetMeResponse = zod.object({
   "id": zod.number(),
-  "pocketNumber": zod.string().describe('Internal number in format PN-100001'),
+  "pocketNumber": zod.string().describe('9-digit unique number with prefix 71\/73\/77\/700 (e.g. 713456789)'),
   "name": zod.string(),
   "email": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Keep-alive heartbeat — marks the caller as online
+ */
+export const HeartbeatResponse = zod.object({
+  "message": zod.string()
 })
 
 
@@ -137,6 +151,8 @@ export const SearchUsersResponse = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)')
@@ -152,6 +168,8 @@ export const GetFriendsResponseItem = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)'),
@@ -170,6 +188,8 @@ export const GetIncomingFriendRequestsResponseItem = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)'),
@@ -178,6 +198,8 @@ export const GetIncomingFriendRequestsResponseItem = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)'),
@@ -197,6 +219,8 @@ export const GetOutgoingFriendRequestsResponseItem = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)'),
@@ -205,6 +229,8 @@ export const GetOutgoingFriendRequestsResponseItem = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)'),
@@ -228,6 +254,8 @@ export const SendFriendRequestResponse = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)'),
@@ -236,6 +264,8 @@ export const SendFriendRequestResponse = zod.object({
   "pocketNumber": zod.string(),
   "name": zod.string(),
   "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
   "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
   "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
 }).describe('Public-facing user info (no email)'),

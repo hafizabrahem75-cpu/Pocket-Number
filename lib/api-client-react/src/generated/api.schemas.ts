@@ -11,11 +11,15 @@ export interface HealthStatus {
 
 export interface User {
   id: number;
-  /** Internal number in format PN-100001 */
+  /** 9-digit unique number with prefix 71/73/77/700 (e.g. 713456789) */
   pocketNumber: string;
   name: string;
   email: string;
   isVerified: boolean;
+  /** Whether the user is currently online */
+  isOnline: boolean;
+  /** Timestamp of the user's last activity */
+  lastSeenAt: string | null;
   createdAt: string;
 }
 
@@ -40,6 +44,10 @@ export interface PublicUser {
   pocketNumber: string;
   name: string;
   isVerified: boolean;
+  /** Whether the user is currently online */
+  isOnline: boolean;
+  /** Timestamp of the user's last activity */
+  lastSeenAt: string | null;
   /** Relationship of the current user to this user */
   friendshipStatus: PublicUserFriendshipStatus;
   /** ID of the friendship record if one exists */

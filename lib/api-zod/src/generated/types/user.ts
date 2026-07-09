@@ -8,10 +8,14 @@
 
 export interface User {
   id: number;
-  /** Internal number in format PN-100001 */
+  /** 9-digit unique number with prefix 71/73/77/700 (e.g. 713456789) */
   pocketNumber: string;
   name: string;
   email: string;
   isVerified: boolean;
+  /** Whether the user is currently online */
+  isOnline: boolean;
+  /** Timestamp of the user's last activity */
+  lastSeenAt: Date | null;
   createdAt: Date;
 }

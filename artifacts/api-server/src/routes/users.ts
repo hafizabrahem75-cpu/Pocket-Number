@@ -5,7 +5,17 @@ import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
-// GET /users/search?q=PN-100001
+// POST /users/heartbeat — mark caller as online, update last_seen_at
+router.post("/users/heartbeat", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  await db
+    .update(usersTable)
+    .set({ isOnline: true, lastSeenAt: new Date() })
+    .where(eq(usersTable.id, req.userId!));
+
+  res.json({ message: "ok" });
+});
+
+// GET /users/search?q=710000001
 router.get("/users/search", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const q = (req.query.q as string | undefined)?.trim().toUpperCase();
 
@@ -20,6 +30,8 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res): Promise<
       pocketNumber: usersTable.pocketNumber,
       name: usersTable.name,
       isVerified: usersTable.isVerified,
+      isOnline: usersTable.isOnline,
+      lastSeenAt: usersTable.lastSeenAt,
     })
     .from(usersTable)
     .where(eq(usersTable.pocketNumber, q));
@@ -31,7 +43,6 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res): Promise<
 
   const currentUserId = req.userId!;
 
-  // Determine friendship status between current user and found user
   let friendshipStatus: "none" | "pending_sent" | "pending_received" | "accepted" = "none";
   let friendshipId: number | undefined;
 
@@ -69,6 +80,8 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res): Promise<
     pocketNumber: found.pocketNumber,
     name: found.name,
     isVerified: found.isVerified,
+    isOnline: found.isOnline,
+    lastSeenAt: found.lastSeenAt?.toISOString() ?? null,
     friendshipStatus,
     ...(friendshipId !== undefined ? { friendshipId } : {}),
   });

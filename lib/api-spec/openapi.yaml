@@ -165,7 +165,9 @@ paths:
     post:
       operationId: logout
       tags: [auth]
-      summary: Logout
+      summary: Logout and mark user offline
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: Logged out
@@ -186,6 +188,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/heartbeat:
+    post:
+      operationId: heartbeat
+      tags: [users]
+      summary: Keep-alive heartbeat — marks the caller as online
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Heartbeat acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
         "401":
           description: Not authenticated
           content:
@@ -596,13 +619,21 @@ components:
           type: integer
         pocketNumber:
           type: string
-          description: Internal number in format PN-100001
+          description: "9-digit unique number with prefix 71/73/77/700 (e.g. 713456789)"
         name:
           type: string
         email:
           type: string
         isVerified:
           type: boolean
+        isOnline:
+          type: boolean
+          description: Whether the user is currently online
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the user's last activity
         createdAt:
           type: string
           format: date-time
@@ -612,6 +643,8 @@ components:
         - name
         - email
         - isVerified
+        - isOnline
+        - lastSeenAt
         - createdAt
 
     PublicUser:
@@ -626,6 +659,14 @@ components:
           type: string
         isVerified:
           type: boolean
+        isOnline:
+          type: boolean
+          description: Whether the user is currently online
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the user's last activity
         friendshipStatus:
           type: string
           enum: [none, pending_sent, pending_received, accepted]
@@ -638,6 +679,8 @@ components:
         - pocketNumber
         - name
         - isVerified
+        - isOnline
+        - lastSeenAt
         - friendshipStatus
 
     FriendEntry:

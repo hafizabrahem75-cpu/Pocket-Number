@@ -13,6 +13,8 @@ import type { PublicUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { formatLastSeen } from "@/lib/formatLastSeen";
+import { cn } from "@/lib/utils";
 import {
   ArrowRight,
   Search,
@@ -23,9 +25,31 @@ import {
   CheckCircle2,
   UserX,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-// ── Result Card ──────────────────────────────────────────────────────────────
+// ── Status Badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ isOnline, lastSeenAt }: { isOnline: boolean; lastSeenAt: string | null }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full",
+        isOnline
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+      )}
+    >
+      <span
+        className={cn(
+          "w-1.5 h-1.5 rounded-full shrink-0",
+          isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400",
+        )}
+      />
+      {isOnline ? "متصل الآن" : formatLastSeen(lastSeenAt)}
+    </div>
+  );
+}
+
+// ── Result Card ───────────────────────────────────────────────────────────────
 
 function ResultCard({ user }: { user: PublicUser }) {
   const { user: me } = useAuth();
@@ -63,11 +87,21 @@ function ResultCard({ user }: { user: PublicUser }) {
     <div className="mx-4 rounded-3xl border border-border bg-background shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-400">
       {/* Avatar strip */}
       <div className="bg-gradient-to-br from-primary/15 to-primary/5 px-6 pt-8 pb-6 flex flex-col items-center gap-3">
-        <div className="w-20 h-20 rounded-full bg-primary/15 border-4 border-background shadow-md flex items-center justify-center">
-          <span className="text-3xl font-black text-primary">
-            {user.name.trim()[0]?.toUpperCase() ?? "؟"}
-          </span>
+        <div className="relative">
+          <div className="w-20 h-20 rounded-full bg-primary/15 border-4 border-background shadow-md flex items-center justify-center">
+            <span className="text-3xl font-black text-primary">
+              {user.name.trim()[0]?.toUpperCase() ?? "؟"}
+            </span>
+          </div>
+          {/* Online dot on avatar */}
+          <span
+            className={cn(
+              "absolute bottom-1 left-1 w-4 h-4 rounded-full border-2 border-background",
+              user.isOnline ? "bg-emerald-500" : "bg-gray-400",
+            )}
+          />
         </div>
+
         <div className="text-center">
           <p className="text-lg font-bold text-foreground">{user.name}</p>
           <p
@@ -78,21 +112,24 @@ function ResultCard({ user }: { user: PublicUser }) {
           </p>
         </div>
 
-        {/* Verified badge */}
-        <div
-          className={cn(
-            "flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full",
-            user.isVerified
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-          )}
-        >
-          {user.isVerified ? (
-            <ShieldCheck className="w-3.5 h-3.5" />
-          ) : (
-            <ShieldAlert className="w-3.5 h-3.5" />
-          )}
-          {user.isVerified ? "حساب موثّق" : "غير موثّق"}
+        {/* Badges row */}
+        <div className="flex flex-wrap gap-2 justify-center">
+          <StatusBadge isOnline={user.isOnline} lastSeenAt={user.lastSeenAt} />
+          <div
+            className={cn(
+              "flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full",
+              user.isVerified
+                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+            )}
+          >
+            {user.isVerified ? (
+              <ShieldCheck className="w-3.5 h-3.5" />
+            ) : (
+              <ShieldAlert className="w-3.5 h-3.5" />
+            )}
+            {user.isVerified ? "موثّق" : "غير موثّق"}
+          </div>
         </div>
       </div>
 
@@ -127,7 +164,7 @@ function ResultCard({ user }: { user: PublicUser }) {
   );
 }
 
-// ── Main Page ────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
   const [, setLocation] = useLocation();
@@ -179,7 +216,7 @@ export default function SearchPage() {
           <div className="flex gap-2 mt-4">
             <Input
               ref={inputRef}
-              placeholder="PN-100001"
+              placeholder="710000001"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -206,7 +243,7 @@ export default function SearchPage() {
 
         {/* Body */}
         <div className="flex-1 py-6 space-y-4">
-          {/* Idle state */}
+          {/* Idle */}
           {!submitted && (
             <div className="flex flex-col items-center justify-center pt-16 px-8 text-center gap-4">
               <div className="w-20 h-20 rounded-3xl bg-primary/8 flex items-center justify-center">
@@ -215,9 +252,9 @@ export default function SearchPage() {
               <div>
                 <p className="font-semibold text-foreground mb-1">ابحث برقم الجيب</p>
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
-                  أدخل رقم الجيب كاملاً مثل{" "}
+                  أدخل الرقم المكون من 9 أرقام مثل{" "}
                   <span className="font-mono font-bold text-foreground" dir="ltr">
-                    PN-100001
+                    710000001
                   </span>
                 </p>
               </div>

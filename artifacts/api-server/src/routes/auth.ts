@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db, usersTable, otpCodesTable, pocketNumberCounterTable } from "@workspace/db";
+import { db, usersTable, otpCodesTable } from "@workspace/db";
 import {
   RegisterBody,
   VerifyOtpBody,
@@ -20,30 +20,50 @@ import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
+// ── Pocket Number Generation ─────────────────────────────────────────────────
+
+const PREFIXES = ["71", "73", "77", "700"] as const;
+
 /**
- * Atomically increments and returns the next pocket number.
+ * Generates a unique 9-digit pocket number with one of the prefixes:
+ * 71XXXXXXX | 73XXXXXXX | 77XXXXXXX | 700XXXXXX
+ * Retries on collision (DB unique constraint) up to 10 times.
  */
-async function getNextPocketNumber(): Promise<string> {
-  // Ensure the counter row exists
-  await db
-    .insert(pocketNumberCounterTable)
-    .values({ id: 1, lastNumber: 100000 })
-    .onConflictDoNothing();
+async function generatePocketNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
+    const remainingDigits = 9 - prefix.length;
+    const max = Math.pow(10, remainingDigits);
+    const suffix = String(Math.floor(Math.random() * max)).padStart(remainingDigits, "0");
+    const candidate = prefix + suffix;
 
-  const [updated] = await db
-    .update(pocketNumberCounterTable)
-    .set({ lastNumber: db.$count(pocketNumberCounterTable) })
-    .returning();
+    const [existing] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.pocketNumber, candidate));
 
-  // Use raw SQL for atomic increment
-  const result = await db.execute(
-    `UPDATE pocket_number_counter SET last_number = last_number + 1 WHERE id = 1 RETURNING last_number`,
-  );
-  const lastNumber = (result as any).rows?.[0]?.last_number ?? 100001;
-  return `PN-${lastNumber}`;
+    if (!existing) return candidate;
+  }
+  throw new Error("فشل توليد رقم جيب فريد — يرجى المحاولة مرة أخرى");
 }
 
-// POST /auth/register
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function serializeUser(user: typeof usersTable.$inferSelect) {
+  return {
+    id: user.id,
+    pocketNumber: user.pocketNumber,
+    name: user.name,
+    email: user.email,
+    isVerified: user.isVerified,
+    isOnline: user.isOnline,
+    lastSeenAt: user.lastSeenAt?.toISOString() ?? null,
+    createdAt: user.createdAt.toISOString(),
+  };
+}
+
+// ── POST /auth/register ───────────────────────────────────────────────────────
+
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
@@ -54,7 +74,6 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const { name, email, password } = parsed.data;
   const lowerEmail = email.toLowerCase().trim();
 
-  // Check if email already exists
   const [existing] = await db
     .select({ id: usersTable.id })
     .from(usersTable)
@@ -65,37 +84,26 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  // Hash password
   const passwordHash = await bcrypt.hash(password, 12);
+  const pocketNumber = await generatePocketNumber();
 
-  // Get next pocket number (atomic)
-  const rawResult = await db.execute(
-    `INSERT INTO pocket_number_counter (id, last_number) VALUES (1, 100000) ON CONFLICT (id) DO UPDATE SET last_number = pocket_number_counter.last_number + 1 RETURNING last_number`,
-  );
-  const lastNumber = (rawResult as any).rows?.[0]?.last_number ?? 100001;
-  const pocketNumber = `PN-${lastNumber}`;
-
-  // Create user (unverified)
   await db.insert(usersTable).values({
     name: name.trim(),
     email: lowerEmail,
     passwordHash,
     pocketNumber,
     isVerified: false,
+    isOnline: false,
   });
 
-  // Invalidate old OTPs for this email
   await db
     .update(otpCodesTable)
     .set({ used: true })
     .where(eq(otpCodesTable.email, lowerEmail));
 
-  // Generate and save OTP
   const code = generateOtpCode();
   const expiresAt = getOtpExpiry();
   await db.insert(otpCodesTable).values({ email: lowerEmail, code, expiresAt });
-
-  // Send OTP (currently logs in dev mode)
   await sendOtpEmail(lowerEmail, code);
 
   req.log.info({ email: lowerEmail }, "User registered, OTP sent");
@@ -108,7 +116,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   res.status(201).json(RegisterResponse.parse(registerPayload));
 });
 
-// POST /auth/verify-otp
+// ── POST /auth/verify-otp ────────────────────────────────────────────────────
+
 router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const parsed = VerifyOtpBody.safeParse(req.body);
   if (!parsed.success) {
@@ -120,7 +129,6 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const lowerEmail = email.toLowerCase().trim();
   const now = new Date();
 
-  // Find valid OTP
   const [otp] = await db
     .select()
     .from(otpCodesTable)
@@ -140,16 +148,14 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  // Mark OTP as used
   await db
     .update(otpCodesTable)
     .set({ used: true })
     .where(eq(otpCodesTable.id, otp.id));
 
-  // Activate user
   const [user] = await db
     .update(usersTable)
-    .set({ isVerified: true })
+    .set({ isVerified: true, isOnline: true, lastSeenAt: now })
     .where(eq(usersTable.email, lowerEmail))
     .returning();
 
@@ -161,22 +167,11 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const token = signToken({ userId: user.id, email: user.email });
 
   req.log.info({ userId: user.id }, "User verified and logged in");
-  res.json(
-    VerifyOtpResponse.parse({
-      token,
-      user: {
-        id: user.id,
-        pocketNumber: user.pocketNumber,
-        name: user.name,
-        email: user.email,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt.toISOString(),
-      },
-    }),
-  );
+  res.json(VerifyOtpResponse.parse({ token, user: serializeUser(user) }));
 });
 
-// POST /auth/resend-otp
+// ── POST /auth/resend-otp ────────────────────────────────────────────────────
+
 router.post("/auth/resend-otp", async (req, res): Promise<void> => {
   const parsed = ResendOtpBody.safeParse(req.body);
   if (!parsed.success) {
@@ -202,17 +197,14 @@ router.post("/auth/resend-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  // Invalidate old OTPs
   await db
     .update(otpCodesTable)
     .set({ used: true })
     .where(eq(otpCodesTable.email, lowerEmail));
 
-  // New OTP
   const code = generateOtpCode();
   const expiresAt = getOtpExpiry();
   await db.insert(otpCodesTable).values({ email: lowerEmail, code, expiresAt });
-
   await sendOtpEmail(lowerEmail, code);
 
   req.log.info({ email: lowerEmail }, "OTP resent");
@@ -225,7 +217,8 @@ router.post("/auth/resend-otp", async (req, res): Promise<void> => {
   res.json(ResendOtpResponse.parse(resendPayload));
 });
 
-// POST /auth/login
+// ── POST /auth/login ─────────────────────────────────────────────────────────
+
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -257,31 +250,32 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  const now = new Date();
+  const [updated] = await db
+    .update(usersTable)
+    .set({ isOnline: true, lastSeenAt: now })
+    .where(eq(usersTable.id, user.id))
+    .returning();
+
   const token = signToken({ userId: user.id, email: user.email });
 
   req.log.info({ userId: user.id }, "User logged in");
-  res.json(
-    LoginResponse.parse({
-      token,
-      user: {
-        id: user.id,
-        pocketNumber: user.pocketNumber,
-        name: user.name,
-        email: user.email,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt.toISOString(),
-      },
-    }),
-  );
+  res.json(LoginResponse.parse({ token, user: serializeUser(updated ?? { ...user, isOnline: true, lastSeenAt: now }) }));
 });
 
-// POST /auth/logout
-router.post("/auth/logout", async (_req, res): Promise<void> => {
-  // JWT is stateless — logout is handled client-side by discarding the token
+// ── POST /auth/logout ────────────────────────────────────────────────────────
+
+router.post("/auth/logout", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  await db
+    .update(usersTable)
+    .set({ isOnline: false, lastSeenAt: new Date() })
+    .where(eq(usersTable.id, req.userId!));
+
   res.json(LogoutResponse.parse({ message: "تم تسجيل الخروج بنجاح" }));
 });
 
-// GET /auth/me
+// ── GET /auth/me ─────────────────────────────────────────────────────────────
+
 router.get("/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const [user] = await db
     .select()
@@ -293,16 +287,7 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void>
     return;
   }
 
-  res.json(
-    GetMeResponse.parse({
-      id: user.id,
-      pocketNumber: user.pocketNumber,
-      name: user.name,
-      email: user.email,
-      isVerified: user.isVerified,
-      createdAt: user.createdAt.toISOString(),
-    }),
-  );
+  res.json(GetMeResponse.parse(serializeUser(user)));
 });
 
 export default router;

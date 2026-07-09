@@ -15,6 +15,10 @@ export interface PublicUser {
   pocketNumber: string;
   name: string;
   isVerified: boolean;
+  /** Whether the user is currently online */
+  isOnline: boolean;
+  /** Timestamp of the user's last activity */
+  lastSeenAt: Date | null;
   /** Relationship of the current user to this user */
   friendshipStatus: PublicUserFriendshipStatus;
   /** ID of the friendship record if one exists */

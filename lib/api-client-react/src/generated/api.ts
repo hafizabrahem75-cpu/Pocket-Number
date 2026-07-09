@@ -439,7 +439,7 @@ export const getLogoutUrl = () => {
 }
 
 /**
- * @summary Logout
+ * @summary Logout and mark user offline
  */
 export const logout = async ( options?: RequestInit): Promise<MessageResponse> => {
 
@@ -488,7 +488,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LogoutMutationError = ErrorType<unknown>
 
     /**
- * @summary Logout
+ * @summary Logout and mark user offline
  */
 export const useLogout = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -577,6 +577,77 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
 
 
 
+
+export const getHeartbeatUrl = () => {
+
+
+
+
+  return `/api/users/heartbeat`
+}
+
+/**
+ * @summary Keep-alive heartbeat — marks the caller as online
+ */
+export const heartbeat = async ( options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getHeartbeatUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getHeartbeatMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof heartbeat>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof heartbeat>>, TError,void, TContext> => {
+
+const mutationKey = ['heartbeat'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof heartbeat>>, void> = () => {
+
+
+          return  heartbeat(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HeartbeatMutationResult = NonNullable<Awaited<ReturnType<typeof heartbeat>>>
+
+    export type HeartbeatMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Keep-alive heartbeat — marks the caller as online
+ */
+export const useHeartbeat = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof heartbeat>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof heartbeat>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getHeartbeatMutationOptions(options));
+    }
 
 export const getSearchUsersUrl = (params: SearchUsersParams,) => {
   const normalizedParams = new URLSearchParams();
