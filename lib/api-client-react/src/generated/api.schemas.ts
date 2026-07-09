@@ -19,6 +19,62 @@ export interface User {
   createdAt: string;
 }
 
+/**
+ * Relationship of the current user to this user
+ */
+export type PublicUserFriendshipStatus = typeof PublicUserFriendshipStatus[keyof typeof PublicUserFriendshipStatus];
+
+
+export const PublicUserFriendshipStatus = {
+  none: 'none',
+  pending_sent: 'pending_sent',
+  pending_received: 'pending_received',
+  accepted: 'accepted',
+} as const;
+
+/**
+ * Public-facing user info (no email)
+ */
+export interface PublicUser {
+  id: number;
+  pocketNumber: string;
+  name: string;
+  isVerified: boolean;
+  /** Relationship of the current user to this user */
+  friendshipStatus: PublicUserFriendshipStatus;
+  /** ID of the friendship record if one exists */
+  friendshipId?: number;
+}
+
+/**
+ * A friend in the friends list
+ */
+export interface FriendEntry {
+  friendshipId: number;
+  user: PublicUser;
+  since: string;
+}
+
+export type FriendRequestItemStatus = typeof FriendRequestItemStatus[keyof typeof FriendRequestItemStatus];
+
+
+export const FriendRequestItemStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+} as const;
+
+/**
+ * A friend request (incoming or outgoing)
+ */
+export interface FriendRequestItem {
+  id: number;
+  requester: PublicUser;
+  addressee: PublicUser;
+  status: FriendRequestItemStatus;
+  createdAt: string;
+}
+
 export interface AuthResponse {
   token: string;
   user: User;
@@ -65,6 +121,10 @@ export interface LoginInput {
   password: string;
 }
 
+export interface SendFriendRequestInput {
+  addresseeId: number;
+}
+
 export type Register201 = {
   message: string;
   /** OTP code for testing — present only in development mode, never in production */
@@ -75,5 +135,12 @@ export type ResendOtp200 = {
   message: string;
   /** OTP code for testing — present only in development mode, never in production */
   devOtp?: string;
+};
+
+export type SearchUsersParams = {
+/**
+ * Pocket Number to search for (e.g. PN-100001)
+ */
+q: string;
 };
 

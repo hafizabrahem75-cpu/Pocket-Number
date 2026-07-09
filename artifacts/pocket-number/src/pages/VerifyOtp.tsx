@@ -60,7 +60,7 @@ export default function VerifyOtp() {
         sessionStorage.removeItem("pn_dev_otp");
         setDevOtp(null);
         login(data.token, data.user);
-        setLocation("/profile");
+        setLocation("/home");
         toast({
           title: "تم التحقق بنجاح",
           description: "مرحباً بك في Pocket Number",

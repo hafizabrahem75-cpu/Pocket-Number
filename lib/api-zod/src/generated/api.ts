@@ -9,7 +9,6 @@ import * as zod from 'zod';
 
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -42,7 +41,6 @@ export const RegisterResponse = zod.object({
 
 
 /**
- * Verifies the OTP sent to the user's email and activates the account
  * @summary Verify OTP code
  */
 export const verifyOtpBodyCodeMin = 6;
@@ -69,7 +67,6 @@ export const VerifyOtpResponse = zod.object({
 
 
 /**
- * Sends a new OTP to the user's email
  * @summary Resend OTP code
  */
 export const ResendOtpBody = zod.object({
@@ -83,7 +80,6 @@ export const ResendOtpResponse = zod.object({
 
 
 /**
- * Authenticates a user and returns a token
  * @summary Login
  */
 
@@ -116,7 +112,6 @@ export const LogoutResponse = zod.object({
 
 
 /**
- * Returns the profile of the authenticated user
  * @summary Get current user profile
  */
 export const GetMeResponse = zod.object({
@@ -126,6 +121,162 @@ export const GetMeResponse = zod.object({
   "email": zod.string(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Find a user by their exact Pocket Number (e.g. PN-100001)
+ * @summary Search user by Pocket Number
+ */
+export const SearchUsersQueryParams = zod.object({
+  "q": zod.coerce.string().describe('Pocket Number to search for (e.g. PN-100001)')
+})
+
+export const SearchUsersResponse = zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)')
+
+
+/**
+ * @summary Get friends list
+ */
+export const GetFriendsResponseItem = zod.object({
+  "friendshipId": zod.number(),
+  "user": zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)'),
+  "since": zod.coerce.date()
+}).describe('A friend in the friends list')
+export const GetFriendsResponse = zod.array(GetFriendsResponseItem)
+
+
+/**
+ * @summary Get incoming pending friend requests
+ */
+export const GetIncomingFriendRequestsResponseItem = zod.object({
+  "id": zod.number(),
+  "requester": zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)'),
+  "addressee": zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)'),
+  "status": zod.enum(['pending', 'accepted', 'rejected']),
+  "createdAt": zod.coerce.date()
+}).describe('A friend request (incoming or outgoing)')
+export const GetIncomingFriendRequestsResponse = zod.array(GetIncomingFriendRequestsResponseItem)
+
+
+/**
+ * @summary Get outgoing pending friend requests
+ */
+export const GetOutgoingFriendRequestsResponseItem = zod.object({
+  "id": zod.number(),
+  "requester": zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)'),
+  "addressee": zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)'),
+  "status": zod.enum(['pending', 'accepted', 'rejected']),
+  "createdAt": zod.coerce.date()
+}).describe('A friend request (incoming or outgoing)')
+export const GetOutgoingFriendRequestsResponse = zod.array(GetOutgoingFriendRequestsResponseItem)
+
+
+/**
+ * @summary Send a friend request
+ */
+export const SendFriendRequestBody = zod.object({
+  "addresseeId": zod.number()
+})
+
+export const SendFriendRequestResponse = zod.object({
+  "id": zod.number(),
+  "requester": zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)'),
+  "addressee": zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)'),
+  "status": zod.enum(['pending', 'accepted', 'rejected']),
+  "createdAt": zod.coerce.date()
+}).describe('A friend request (incoming or outgoing)')
+
+
+/**
+ * @summary Accept a friend request
+ */
+export const AcceptFriendRequestParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AcceptFriendRequestResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Reject a friend request
+ */
+export const RejectFriendRequestParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RejectFriendRequestResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Cancel an outgoing friend request
+ */
+export const CancelFriendRequestParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelFriendRequestResponse = zod.object({
+  "message": zod.string()
 })
 
 

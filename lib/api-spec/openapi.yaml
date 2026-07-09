@@ -12,15 +12,16 @@ tags:
     description: Health operations
   - name: auth
     description: Authentication operations
-  - name: profile
-    description: User profile operations
+  - name: users
+    description: User search
+  - name: friends
+    description: Friend requests and contacts
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -74,7 +75,6 @@ paths:
       operationId: verifyOtp
       tags: [auth]
       summary: Verify OTP code
-      description: Verifies the OTP sent to the user's email and activates the account
       requestBody:
         required: true
         content:
@@ -100,7 +100,6 @@ paths:
       operationId: resendOtp
       tags: [auth]
       summary: Resend OTP code
-      description: Sends a new OTP to the user's email
       requestBody:
         required: true
         content:
@@ -134,7 +133,6 @@ paths:
       operationId: login
       tags: [auth]
       summary: Login
-      description: Authenticates a user and returns a token
       requestBody:
         required: true
         content:
@@ -179,7 +177,6 @@ paths:
       operationId: getMe
       tags: [auth]
       summary: Get current user profile
-      description: Returns the profile of the authenticated user
       responses:
         "200":
           description: Current user profile
@@ -194,7 +191,255 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /users/search:
+    get:
+      operationId: searchUsers
+      tags: [users]
+      summary: Search user by Pocket Number
+      description: Find a user by their exact Pocket Number (e.g. PN-100001)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Pocket Number to search for (e.g. PN-100001)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicUser"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends:
+    get:
+      operationId: getFriends
+      tags: [friends]
+      summary: Get friends list
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of accepted friends
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendEntry"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends/requests/incoming:
+    get:
+      operationId: getIncomingFriendRequests
+      tags: [friends]
+      summary: Get incoming pending friend requests
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of incoming requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendRequestItem"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends/requests/outgoing:
+    get:
+      operationId: getOutgoingFriendRequests
+      tags: [friends]
+      summary: Get outgoing pending friend requests
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of outgoing requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendRequestItem"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends/request:
+    post:
+      operationId: sendFriendRequest
+      tags: [friends]
+      summary: Send a friend request
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendFriendRequestInput"
+      responses:
+        "201":
+          description: Friend request sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequestItem"
+        "400":
+          description: Invalid request (self-request, already friends, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends/requests/{id}/accept:
+    post:
+      operationId: acceptFriendRequest
+      tags: [friends]
+      summary: Accept a friend request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Friend request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends/requests/{id}/reject:
+    post:
+      operationId: rejectFriendRequest
+      tags: [friends]
+      summary: Reject a friend request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Friend request rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends/requests/{id}:
+    delete:
+      operationId: cancelFriendRequest
+      tags: [friends]
+      summary: Cancel an outgoing friend request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Friend request cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -216,7 +461,6 @@ components:
           type: string
         email:
           type: string
-
         isVerified:
           type: boolean
         createdAt:
@@ -228,6 +472,71 @@ components:
         - name
         - email
         - isVerified
+        - createdAt
+
+    PublicUser:
+      type: object
+      description: Public-facing user info (no email)
+      properties:
+        id:
+          type: integer
+        pocketNumber:
+          type: string
+        name:
+          type: string
+        isVerified:
+          type: boolean
+        friendshipStatus:
+          type: string
+          enum: [none, pending_sent, pending_received, accepted]
+          description: Relationship of the current user to this user
+        friendshipId:
+          type: integer
+          description: ID of the friendship record if one exists
+      required:
+        - id
+        - pocketNumber
+        - name
+        - isVerified
+        - friendshipStatus
+
+    FriendEntry:
+      type: object
+      description: A friend in the friends list
+      properties:
+        friendshipId:
+          type: integer
+        user:
+          $ref: "#/components/schemas/PublicUser"
+        since:
+          type: string
+          format: date-time
+      required:
+        - friendshipId
+        - user
+        - since
+
+    FriendRequestItem:
+      type: object
+      description: A friend request (incoming or outgoing)
+      properties:
+        id:
+          type: integer
+        requester:
+          $ref: "#/components/schemas/PublicUser"
+        addressee:
+          $ref: "#/components/schemas/PublicUser"
+        status:
+          type: string
+          enum: [pending, accepted, rejected]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - requester
+        - addressee
+        - status
         - createdAt
 
     AuthResponse:
@@ -249,7 +558,6 @@ components:
       required:
         - message
 
-
     ErrorResponse:
       type: object
       properties:
@@ -267,7 +575,6 @@ components:
           maxLength: 50
         email:
           type: string
-
         password:
           type: string
           minLength: 8
@@ -282,7 +589,6 @@ components:
       properties:
         email:
           type: string
-
         code:
           type: string
           minLength: 6
@@ -296,7 +602,6 @@ components:
       properties:
         email:
           type: string
-
       required:
         - email
 
@@ -305,10 +610,17 @@ components:
       properties:
         email:
           type: string
-
         password:
           type: string
           minLength: 1
       required:
         - email
         - password
+
+    SendFriendRequestInput:
+      type: object
+      properties:
+        addresseeId:
+          type: integer
+      required:
+        - addresseeId

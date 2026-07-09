@@ -37,7 +37,7 @@ export default function Login() {
     loginMutation.mutate({ data }, {
       onSuccess: (res) => {
         login(res.token, res.user);
-        setLocation("/profile");
+        setLocation("/home");
         toast({
           title: "تم تسجيل الدخول",
           description: `مرحباً بعودتك، ${res.user.name}`,

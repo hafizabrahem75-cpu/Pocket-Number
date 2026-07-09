@@ -9,6 +9,7 @@ import Splash from '@/pages/Splash';
 import Register from '@/pages/Register';
 import VerifyOtp from '@/pages/VerifyOtp';
 import Login from '@/pages/Login';
+import HomeShell from '@/pages/home/HomeShell';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/not-found';
@@ -30,6 +31,9 @@ function Router() {
       <Route path="/verify-otp" component={VerifyOtp} />
       <Route path="/login" component={Login} />
       
+      <Route path="/home">
+        {() => <ProtectedRoute component={HomeShell} />}
+      </Route>
       <Route path="/profile">
         {() => <ProtectedRoute component={Profile} />}
       </Route>
