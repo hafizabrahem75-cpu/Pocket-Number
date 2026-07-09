@@ -6,7 +6,7 @@ import { Link, useLocation } from "wouter";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, FlaskConical } from "lucide-react";
 
 export default function VerifyOtp() {
   const [, setLocation] = useLocation();
@@ -15,6 +15,7 @@ export default function VerifyOtp() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [countdown, setCountdown] = useState(60);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const verifyMutation = useVerifyOtp();
@@ -27,6 +28,10 @@ export default function VerifyOtp() {
       return;
     }
     setEmail(savedEmail);
+
+    // Restore dev OTP if present (set by Register page)
+    const savedDevOtp = sessionStorage.getItem("pn_dev_otp");
+    if (savedDevOtp) setDevOtp(savedDevOtp);
 
     startTimer();
     return () => clearInterval(timerRef.current!);
@@ -52,6 +57,8 @@ export default function VerifyOtp() {
     verifyMutation.mutate({ data: { email, code: otp } }, {
       onSuccess: (data) => {
         sessionStorage.removeItem("pn_pending_email");
+        sessionStorage.removeItem("pn_dev_otp");
+        setDevOtp(null);
         login(data.token, data.user);
         setLocation("/profile");
         toast({
@@ -74,8 +81,16 @@ export default function VerifyOtp() {
     if (countdown > 0) return;
     
     resendMutation.mutate({ data: { email } }, {
-      onSuccess: () => {
+      onSuccess: (response) => {
         startTimer();
+        // Update or clear dev OTP banner based on server response
+        if (response.devOtp) {
+          setDevOtp(response.devOtp);
+          sessionStorage.setItem("pn_dev_otp", response.devOtp);
+        } else {
+          setDevOtp(null);
+          sessionStorage.removeItem("pn_dev_otp");
+        }
         toast({
           title: "تم إرسال الرمز",
           description: "تم إرسال رمز جديد إلى بريدك الإلكتروني",
@@ -98,7 +113,32 @@ export default function VerifyOtp() {
           <ArrowRight className="ml-2 w-5 h-5" />
           <span className="font-medium">رجوع</span>
         </Link>
-        
+
+        {/* Dev-only OTP banner — never shown in production */}
+        {devOtp && (
+          <div className="mb-6 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <FlaskConical className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">وضع التطوير فقط</span>
+            </div>
+            <p className="text-xs text-amber-600 mb-3 leading-relaxed">
+              هذا الرمز يظهر فقط أثناء التطوير. في الإنتاج يُرسَل عبر البريد الإلكتروني.
+            </p>
+            <div
+              className="rounded-xl bg-white border border-amber-200 px-4 py-3 text-center cursor-pointer select-all"
+              onClick={() => {
+                setOtp(devOtp);
+              }}
+              title="انقر لنسخ الرمز إلى حقل الإدخال"
+            >
+              <span className="font-mono text-2xl font-black tracking-[0.4em] text-amber-800" dir="ltr">
+                {devOtp}
+              </span>
+            </div>
+            <p className="text-xs text-amber-500 text-center mt-2">انقر على الرمز لملء الحقل تلقائياً</p>
+          </div>
+        )}
+
         <div className="space-y-4 mb-12">
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">

@@ -36,7 +36,8 @@ export const RegisterBody = zod.object({
 })
 
 export const RegisterResponse = zod.object({
-  "message": zod.string()
+  "message": zod.string(),
+  "devOtp": zod.string().optional().describe('OTP code for testing — present only in development mode, never in production')
 })
 
 
@@ -76,7 +77,8 @@ export const ResendOtpBody = zod.object({
 })
 
 export const ResendOtpResponse = zod.object({
-  "message": zod.string()
+  "message": zod.string(),
+  "devOtp": zod.string().optional().describe('OTP code for testing — present only in development mode, never in production')
 })
 
 

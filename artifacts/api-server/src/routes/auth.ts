@@ -99,7 +99,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   await sendOtpEmail(lowerEmail, code);
 
   req.log.info({ email: lowerEmail }, "User registered, OTP sent");
-  res.status(201).json(RegisterResponse.parse({ message: "تم إرسال رمز التحقق إلى بريدك الإلكتروني" }));
+  const registerPayload: { message: string; devOtp?: string } = {
+    message: "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
+  };
+  if (process.env.NODE_ENV !== "production") {
+    registerPayload.devOtp = code;
+  }
+  res.status(201).json(RegisterResponse.parse(registerPayload));
 });
 
 // POST /auth/verify-otp
@@ -210,7 +216,13 @@ router.post("/auth/resend-otp", async (req, res): Promise<void> => {
   await sendOtpEmail(lowerEmail, code);
 
   req.log.info({ email: lowerEmail }, "OTP resent");
-  res.json(ResendOtpResponse.parse({ message: "تم إعادة إرسال رمز التحقق" }));
+  const resendPayload: { message: string; devOtp?: string } = {
+    message: "تم إعادة إرسال رمز التحقق",
+  };
+  if (process.env.NODE_ENV !== "production") {
+    resendPayload.devOtp = code;
+  }
+  res.json(ResendOtpResponse.parse(resendPayload));
 });
 
 // POST /auth/login

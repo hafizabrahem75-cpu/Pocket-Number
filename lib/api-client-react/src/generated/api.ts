@@ -25,7 +25,9 @@ import type {
   HealthStatus,
   LoginInput,
   MessageResponse,
+  Register201,
   RegisterInput,
+  ResendOtp200,
   ResendOtpInput,
   User,
   VerifyOtpInput
@@ -148,9 +150,9 @@ export const getRegisterUrl = () => {
  * Creates a new account and sends an OTP to the email for verification
  * @summary Register a new user
  */
-export const register = async (registerInput: RegisterInput, options?: RequestInit): Promise<MessageResponse> => {
+export const register = async (registerInput: RegisterInput, options?: RequestInit): Promise<Register201> => {
 
-  return customFetch<MessageResponse>(getRegisterUrl(),
+  return customFetch<Register201>(getRegisterUrl(),
   {
     ...options,
     method: 'POST',
@@ -292,9 +294,9 @@ export const getResendOtpUrl = () => {
  * Sends a new OTP to the user's email
  * @summary Resend OTP code
  */
-export const resendOtp = async (resendOtpInput: ResendOtpInput, options?: RequestInit): Promise<MessageResponse> => {
+export const resendOtp = async (resendOtpInput: ResendOtpInput, options?: RequestInit): Promise<ResendOtp200> => {
 
-  return customFetch<MessageResponse>(getResendOtpUrl(),
+  return customFetch<ResendOtp200>(getResendOtpUrl(),
   {
     ...options,
     method: 'POST',

@@ -65,3 +65,15 @@ export interface LoginInput {
   password: string;
 }
 
+export type Register201 = {
+  message: string;
+  /** OTP code for testing — present only in development mode, never in production */
+  devOtp?: string;
+};
+
+export type ResendOtp200 = {
+  message: string;
+  /** OTP code for testing — present only in development mode, never in production */
+  devOtp?: string;
+};
+

@@ -47,7 +47,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                type: object
+                properties:
+                  message:
+                    type: string
+                  devOtp:
+                    type: string
+                    description: OTP code for testing — present only in development mode, never in production
+                required:
+                  - message
         "409":
           description: Email already registered
           content:
@@ -105,7 +113,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                type: object
+                properties:
+                  message:
+                    type: string
+                  devOtp:
+                    type: string
+                    description: OTP code for testing — present only in development mode, never in production
+                required:
+                  - message
         "400":
           description: Email not found or already verified
           content:
@@ -232,6 +248,7 @@ components:
           type: string
       required:
         - message
+
 
     ErrorResponse:
       type: object

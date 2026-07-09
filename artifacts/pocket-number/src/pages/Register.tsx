@@ -35,8 +35,13 @@ export default function Register() {
 
   const onSubmit = (data: FormValues) => {
     registerMutation.mutate({ data }, {
-      onSuccess: () => {
+      onSuccess: (response) => {
         sessionStorage.setItem("pn_pending_email", data.email);
+        if (response.devOtp) {
+          sessionStorage.setItem("pn_dev_otp", response.devOtp);
+        } else {
+          sessionStorage.removeItem("pn_dev_otp");
+        }
         setLocation("/verify-otp");
       },
       onError: (error: any) => {
