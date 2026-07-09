@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Pocket Number"
+version = "1.0.0"
+id = "artifacts/pocket-number"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21657
+
+[services.development]
+run = "pnpm --filter @workspace/pocket-number run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pocket-number", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/pocket-number/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21657"
+BASE_PATH = "/"
