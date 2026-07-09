@@ -1,0 +1,2 @@
+- [Orval codegen index duplication](orval-codegen-index.md) — codegen appends to index.ts; clean generated/ dirs before re-running to avoid duplicate exports
+- [Messaging system design](messaging-design.md) — Phase 3 backend complete; E2EE-ready schema, delivery state machine, cursor pagination

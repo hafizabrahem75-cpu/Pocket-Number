@@ -165,6 +165,130 @@ export interface UpdateContactInput {
   localName: string;
 }
 
+/**
+ * Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward.
+ */
+export type MessageItemStatus = typeof MessageItemStatus[keyof typeof MessageItemStatus];
+
+
+export const MessageItemStatus = {
+  sent: 'sent',
+  delivered: 'delivered',
+  read: 'read',
+} as const;
+
+/**
+ * A single direct message
+ */
+export interface MessageItem {
+  id: number;
+  senderId: number;
+  recipientId: number;
+  /** Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device. */
+  content: string;
+  /** MIME-like type hint (e.g. text/plain). Reserved for future binary types. */
+  contentType: string;
+  /** E2EE: AES-GCM IV (base64url). Null in Phase 1. */
+  contentIv: string | null;
+  /** E2EE: AES-GCM authentication tag (base64url). Null in Phase 1. */
+  contentTag: string | null;
+  /** E2EE: sender ephemeral public key (base64url, X25519). Null in Phase 1. */
+  senderPublicKey: string | null;
+  /** Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward. */
+  status: MessageItemStatus;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface SendMessageInput {
+  /** User ID of the recipient */
+  recipientId: number;
+  /**
+     * Phase 1: plaintext. Phase 2 (E2EE): base64url-encoded ciphertext.
+     * @minLength 1
+     * @maxLength 10000
+     */
+  content: string;
+  /** Defaults to text/plain. Reserved for future binary types. */
+  contentType?: string;
+  /** E2EE: AES-GCM IV (base64url). Omit in Phase 1. */
+  contentIv?: string | null;
+  /** E2EE: AES-GCM authentication tag (base64url). Omit in Phase 1. */
+  contentTag?: string | null;
+  /** E2EE: sender ephemeral public key for key exchange. Omit in Phase 1. */
+  senderPublicKey?: string | null;
+}
+
+/**
+ * New status. Only forward transitions are accepted (sent → delivered → read). Only the recipient may call this endpoint.
+ */
+export type UpdateMessageStatusInputStatus = typeof UpdateMessageStatusInputStatus[keyof typeof UpdateMessageStatusInputStatus];
+
+
+export const UpdateMessageStatusInputStatus = {
+  delivered: 'delivered',
+  read: 'read',
+} as const;
+
+export interface UpdateMessageStatusInput {
+  /** New status. Only forward transitions are accepted (sent → delivered → read). Only the recipient may call this endpoint. */
+  status: UpdateMessageStatusInputStatus;
+}
+
+export type ConversationListItemLastMessageStatus = typeof ConversationListItemLastMessageStatus[keyof typeof ConversationListItemLastMessageStatus];
+
+
+export const ConversationListItemLastMessageStatus = {
+  sent: 'sent',
+  delivered: 'delivered',
+  read: 'read',
+} as const;
+
+export type ConversationListItemLastMessage = {
+  id: number;
+  senderId: number;
+  recipientId: number;
+  content: string;
+  contentType: string;
+  status: ConversationListItemLastMessageStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Inbox summary entry — one per conversation partner
+ */
+export interface ConversationListItem {
+  peerId: number;
+  peerPocketNumber: string;
+  peerName: string;
+  peerIsVerified: boolean;
+  unreadCount: number;
+  lastMessage: ConversationListItemLastMessage;
+}
+
+export type GetInbox200 = {
+  conversations: ConversationListItem[];
+};
+
+export type GetMessageThreadParams = {
+/**
+ * User ID of the other party
+ */
+recipientId: number;
+/**
+ * Cursor — return messages older than this message ID
+ */
+before?: number;
+};
+
+export type GetMessageThread200 = {
+  messages: MessageItem[];
+  hasMore: boolean;
+  nextCursor: number | null;
+};
+
 export type Register201 = {
   message: string;
   /** OTP code for testing — present only in development mode, never in production */

@@ -9,6 +9,129 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Send a direct message
+ */
+export const sendMessageBodyContentMax = 10000;
+
+
+
+export const SendMessageBody = zod.object({
+  "recipientId": zod.number().describe('User ID of the recipient'),
+  "content": zod.string().min(1).max(sendMessageBodyContentMax).describe('Phase 1: plaintext. Phase 2 (E2EE): base64url-encoded ciphertext.\n'),
+  "contentType": zod.string().optional().describe('Defaults to text\/plain. Reserved for future binary types.'),
+  "contentIv": zod.string().nullish().describe('E2EE: AES-GCM IV (base64url). Omit in Phase 1.'),
+  "contentTag": zod.string().nullish().describe('E2EE: AES-GCM authentication tag (base64url). Omit in Phase 1.'),
+  "senderPublicKey": zod.string().nullish().describe('E2EE: sender ephemeral public key for key exchange. Omit in Phase 1.')
+})
+
+export const SendMessageResponse = zod.object({
+  "id": zod.number(),
+  "senderId": zod.number(),
+  "recipientId": zod.number(),
+  "content": zod.string().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device.\n'),
+  "contentType": zod.string().describe('MIME-like type hint (e.g. text\/plain). Reserved for future binary types.'),
+  "contentIv": zod.string().nullable().describe('E2EE: AES-GCM IV (base64url). Null in Phase 1.'),
+  "contentTag": zod.string().nullable().describe('E2EE: AES-GCM authentication tag (base64url). Null in Phase 1.'),
+  "senderPublicKey": zod.string().nullable().describe('E2EE: sender ephemeral public key (base64url, X25519). Null in Phase 1.'),
+  "status": zod.enum(['sent', 'delivered', 'read']).describe('Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward.\n'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "deletedAt": zod.coerce.date().nullable()
+}).describe('A single direct message')
+
+
+/**
+ * @summary List all conversations (latest message per peer)
+ */
+export const GetInboxResponse = zod.object({
+  "conversations": zod.array(zod.object({
+  "peerId": zod.number(),
+  "peerPocketNumber": zod.string(),
+  "peerName": zod.string(),
+  "peerIsVerified": zod.boolean(),
+  "unreadCount": zod.number(),
+  "lastMessage": zod.object({
+  "id": zod.number(),
+  "senderId": zod.number(),
+  "recipientId": zod.number(),
+  "content": zod.string(),
+  "contentType": zod.string(),
+  "status": zod.enum(['sent', 'delivered', 'read']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+}).describe('Inbox summary entry — one per conversation partner'))
+})
+
+
+/**
+ * @summary Get paginated message thread with a specific user
+ */
+export const GetMessageThreadQueryParams = zod.object({
+  "recipientId": zod.coerce.number().describe('User ID of the other party'),
+  "before": zod.coerce.number().optional().describe('Cursor — return messages older than this message ID')
+})
+
+export const GetMessageThreadResponse = zod.object({
+  "messages": zod.array(zod.object({
+  "id": zod.number(),
+  "senderId": zod.number(),
+  "recipientId": zod.number(),
+  "content": zod.string().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device.\n'),
+  "contentType": zod.string().describe('MIME-like type hint (e.g. text\/plain). Reserved for future binary types.'),
+  "contentIv": zod.string().nullable().describe('E2EE: AES-GCM IV (base64url). Null in Phase 1.'),
+  "contentTag": zod.string().nullable().describe('E2EE: AES-GCM authentication tag (base64url). Null in Phase 1.'),
+  "senderPublicKey": zod.string().nullable().describe('E2EE: sender ephemeral public key (base64url, X25519). Null in Phase 1.'),
+  "status": zod.enum(['sent', 'delivered', 'read']).describe('Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward.\n'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "deletedAt": zod.coerce.date().nullable()
+}).describe('A single direct message')),
+  "hasMore": zod.boolean(),
+  "nextCursor": zod.number().nullable()
+})
+
+
+/**
+ * @summary Advance message status (delivered → read). Recipient only.
+ */
+export const UpdateMessageStatusParams = zod.object({
+  "id": zod.coerce.number().describe('Message ID')
+})
+
+export const UpdateMessageStatusBody = zod.object({
+  "status": zod.enum(['delivered', 'read']).describe('New status. Only forward transitions are accepted (sent → delivered → read). Only the recipient may call this endpoint.\n')
+})
+
+export const UpdateMessageStatusResponse = zod.object({
+  "id": zod.number(),
+  "senderId": zod.number(),
+  "recipientId": zod.number(),
+  "content": zod.string().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device.\n'),
+  "contentType": zod.string().describe('MIME-like type hint (e.g. text\/plain). Reserved for future binary types.'),
+  "contentIv": zod.string().nullable().describe('E2EE: AES-GCM IV (base64url). Null in Phase 1.'),
+  "contentTag": zod.string().nullable().describe('E2EE: AES-GCM authentication tag (base64url). Null in Phase 1.'),
+  "senderPublicKey": zod.string().nullable().describe('E2EE: sender ephemeral public key (base64url, X25519). Null in Phase 1.'),
+  "status": zod.enum(['sent', 'delivered', 'read']).describe('Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward.\n'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "deletedAt": zod.coerce.date().nullable()
+}).describe('A single direct message')
+
+
+/**
+ * @summary Soft-delete a sent message (sender only, only if not yet read)
+ */
+export const DeleteMessageParams = zod.object({
+  "id": zod.coerce.number().describe('Message ID')
+})
+
+export const DeleteMessageResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

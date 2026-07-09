@@ -55,6 +55,33 @@
 - **No `format: email` in OpenAPI spec** — Orval generates `zod.email()` which conflicts with the current zod setup. Use `type: string` with pattern validation instead.
 - **setAuthTokenGetter** registered globally in AuthContext so all API hooks automatically send Authorization headers — no need to pass `request` option per-call.
 
+## Messaging system (Phase 3 backend — complete)
+
+- `lib/db/src/schema/messages.ts` — `messages` table
+- `artifacts/api-server/src/routes/messages.ts` — all messaging routes
+
+### DB schema — `messages` table
+- `sender_id` / `recipient_id` → FK to `users.id` (cascade delete)
+- `content` — plaintext Phase 1; reserved for ciphertext in Phase 2 (E2EE)
+- `content_iv`, `content_tag` — nullable; AES-GCM IV + auth-tag for Phase 2
+- `sender_public_key` — nullable; X25519 ephemeral key for Double Ratchet (Phase 2)
+- `content_type` — MIME hint, defaults `text/plain`; reserved for binary types
+- `status` — enum `sent | delivered | read`; forward-only state machine
+- `deleted_at` — soft-delete (sender only, before message is read)
+- Indexes on `(sender_id, recipient_id, created_at)`, `(recipient_id, created_at)`, `(recipient_id, status)`
+
+### API endpoints
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/messages` | ✓ | Send a message |
+| GET | `/api/messages/inbox` | ✓ | All conversations (latest msg + unread count per peer) |
+| GET | `/api/messages/conversation?recipientId=X&before=Y` | ✓ | Paginated thread (50/page, cursor-based) |
+| PATCH | `/api/messages/:id/status` | ✓ | Advance status: delivered → read (recipient only) |
+| DELETE | `/api/messages/:id` | ✓ | Soft-delete (sender only, only if not yet read) |
+
+### E2EE readiness
+No schema migration needed to add E2EE: the columns (`content_iv`, `content_tag`, `sender_public_key`) are already there, nullable for Phase 1.
+
 ## Product
 
 **Phase 1 (complete):**
@@ -65,9 +92,13 @@
 - Profile page showing name, pocket number, email, verification status
 - Settings page with logout
 
+**Phase 3 backend (complete):**
+- Direct messaging backend (send, inbox, conversation thread, status updates, soft-delete)
+- E2EE-ready schema (no migration needed to add encryption in Phase 2)
+
 **Planned phases:**
 - Phase 2: Real email sending (Resend/SendGrid), rate limiting on auth endpoints
-- Phase 3: Internal messaging between pocket numbers
+- Phase 3 frontend: Messaging UI (inbox + conversation views)
 - Phase 4: Voice/video calls
 - Capacitor: convert to Android APK when core features are stable
 

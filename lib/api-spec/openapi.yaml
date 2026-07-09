@@ -18,7 +18,226 @@ tags:
     description: Friend requests and contacts
   - name: contacts
     description: Personal contacts book
+  - name: messages
+    description: Direct messaging between users
 paths:
+  # ---------------------------------------------------------------------------
+  # Messages
+  # ---------------------------------------------------------------------------
+
+  /messages:
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a direct message
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageItem"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Recipient not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /messages/inbox:
+    get:
+      operationId: getInbox
+      tags: [messages]
+      summary: List all conversations (latest message per peer)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Inbox conversation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConversationListItem"
+                required:
+                  - conversations
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /messages/conversation:
+    get:
+      operationId: getMessageThread
+      tags: [messages]
+      summary: Get paginated message thread with a specific user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: recipientId
+          required: true
+          schema:
+            type: integer
+          description: User ID of the other party
+        - in: query
+          name: before
+          required: false
+          schema:
+            type: integer
+          description: Cursor — return messages older than this message ID
+      responses:
+        "200":
+          description: Paginated message thread (oldest-first within the page)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MessageItem"
+                  hasMore:
+                    type: boolean
+                  nextCursor:
+                    type: integer
+                    nullable: true
+                required:
+                  - messages
+                  - hasMore
+                  - nextCursor
+        "400":
+          description: Invalid recipientId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /messages/{id}/status:
+    patch:
+      operationId: updateMessageStatus
+      tags: [messages]
+      summary: Advance message status (delivered → read). Recipient only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Message ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMessageStatusInput"
+      responses:
+        "200":
+          description: Updated message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageItem"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Cannot revert to an earlier status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /messages/{id}:
+    delete:
+      operationId: deleteMessage
+      tags: [messages]
+      summary: Soft-delete a sent message (sender only, only if not yet read)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Message ID
+      responses:
+        "200":
+          description: Message deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Cannot delete a message that has already been read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /healthz:
     get:
       operationId: healthCheck
@@ -855,3 +1074,165 @@ components:
           maxLength: 50
       required:
         - localName
+
+    # -------------------------------------------------------------------------
+    # Messages
+    # -------------------------------------------------------------------------
+
+    MessageItem:
+      type: object
+      description: A single direct message
+      properties:
+        id:
+          type: integer
+        senderId:
+          type: integer
+        recipientId:
+          type: integer
+        content:
+          type: string
+          description: >
+            Phase 1: plaintext body.
+            Phase 2 (E2EE): base64url-encoded ciphertext — paired with
+            contentIv and contentTag for AES-GCM decryption on the recipient device.
+        contentType:
+          type: string
+          description: MIME-like type hint (e.g. text/plain). Reserved for future binary types.
+        contentIv:
+          type: string
+          nullable: true
+          description: "E2EE: AES-GCM IV (base64url). Null in Phase 1."
+        contentTag:
+          type: string
+          nullable: true
+          description: "E2EE: AES-GCM authentication tag (base64url). Null in Phase 1."
+        senderPublicKey:
+          type: string
+          nullable: true
+          description: "E2EE: sender ephemeral public key (base64url, X25519). Null in Phase 1."
+        status:
+          type: string
+          enum: [sent, delivered, read]
+          description: >
+            Delivery state machine: sent → delivered → read.
+            Only the recipient may advance the state forward.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - senderId
+        - recipientId
+        - content
+        - contentType
+        - contentIv
+        - contentTag
+        - senderPublicKey
+        - status
+        - createdAt
+        - updatedAt
+        - deletedAt
+
+    SendMessageInput:
+      type: object
+      properties:
+        recipientId:
+          type: integer
+          description: User ID of the recipient
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: >
+            Phase 1: plaintext.
+            Phase 2 (E2EE): base64url-encoded ciphertext.
+        contentType:
+          type: string
+          description: Defaults to text/plain. Reserved for future binary types.
+        contentIv:
+          type: string
+          nullable: true
+          description: "E2EE: AES-GCM IV (base64url). Omit in Phase 1."
+        contentTag:
+          type: string
+          nullable: true
+          description: "E2EE: AES-GCM authentication tag (base64url). Omit in Phase 1."
+        senderPublicKey:
+          type: string
+          nullable: true
+          description: "E2EE: sender ephemeral public key for key exchange. Omit in Phase 1."
+      required:
+        - recipientId
+        - content
+
+    UpdateMessageStatusInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [delivered, read]
+          description: >
+            New status. Only forward transitions are accepted
+            (sent → delivered → read). Only the recipient may call this endpoint.
+      required:
+        - status
+
+    ConversationListItem:
+      type: object
+      description: Inbox summary entry — one per conversation partner
+      properties:
+        peerId:
+          type: integer
+        peerPocketNumber:
+          type: string
+        peerName:
+          type: string
+        peerIsVerified:
+          type: boolean
+        unreadCount:
+          type: integer
+        lastMessage:
+          type: object
+          properties:
+            id:
+              type: integer
+            senderId:
+              type: integer
+            recipientId:
+              type: integer
+            content:
+              type: string
+            contentType:
+              type: string
+            status:
+              type: string
+              enum: [sent, delivered, read]
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - id
+            - senderId
+            - recipientId
+            - content
+            - contentType
+            - status
+            - createdAt
+            - updatedAt
+      required:
+        - peerId
+        - peerPocketNumber
+        - peerName
+        - peerIsVerified
+        - unreadCount
+        - lastMessage

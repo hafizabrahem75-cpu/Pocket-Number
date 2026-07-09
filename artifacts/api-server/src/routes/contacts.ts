@@ -103,7 +103,7 @@ router.post("/contacts", requireAuth, async (req: AuthRequest, res): Promise<voi
 // PUT /contacts/:id — update local name
 router.put("/contacts/:id", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const ownerId = req.userId!;
-  const id = parseId(req.params.id);
+  const id = parseId(String(req.params.id ?? ""));
   if (!id) {
     res.status(400).json({ error: "معرّف جهة الاتصال غير صحيح" });
     return;
@@ -154,7 +154,7 @@ router.put("/contacts/:id", requireAuth, async (req: AuthRequest, res): Promise<
 // DELETE /contacts/:id — remove a contact
 router.delete("/contacts/:id", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const ownerId = req.userId!;
-  const id = parseId(req.params.id);
+  const id = parseId(String(req.params.id ?? ""));
   if (!id) {
     res.status(400).json({ error: "معرّف جهة الاتصال غير صحيح" });
     return;

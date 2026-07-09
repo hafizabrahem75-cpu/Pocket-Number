@@ -26,8 +26,12 @@ import type {
   ErrorResponse,
   FriendEntry,
   FriendRequestItem,
+  GetInbox200,
+  GetMessageThread200,
+  GetMessageThreadParams,
   HealthStatus,
   LoginInput,
+  MessageItem,
   MessageResponse,
   PublicUser,
   Register201,
@@ -36,7 +40,9 @@ import type {
   ResendOtpInput,
   SearchUsersParams,
   SendFriendRequestInput,
+  SendMessageInput,
   UpdateContactInput,
+  UpdateMessageStatusInput,
   User,
   VerifyOtpInput
 } from './api.schemas';
@@ -67,6 +73,381 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getSendMessageUrl = () => {
+
+
+
+
+  return `/api/messages`
+}
+
+/**
+ * @summary Send a direct message
+ */
+export const sendMessage = async (sendMessageInput: SendMessageInput, options?: RequestInit): Promise<MessageItem> => {
+
+  return customFetch<MessageItem>(getSendMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sendMessageInput)
+  }
+);}
+
+
+
+
+
+export const getSendMessageMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendMessage>>, TError,{data: BodyType<SendMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendMessage>>, TError,{data: BodyType<SendMessageInput>}, TContext> => {
+
+const mutationKey = ['sendMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendMessage>>, {data: BodyType<SendMessageInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendMessage>>>
+    export type SendMessageMutationBody = BodyType<SendMessageInput>
+    export type SendMessageMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send a direct message
+ */
+export const useSendMessage = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendMessage>>, TError,{data: BodyType<SendMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendMessage>>,
+        TError,
+        {data: BodyType<SendMessageInput>},
+        TContext
+      > => {
+      return useMutation(getSendMessageMutationOptions(options));
+    }
+
+export const getGetInboxUrl = () => {
+
+
+
+
+  return `/api/messages/inbox`
+}
+
+/**
+ * @summary List all conversations (latest message per peer)
+ */
+export const getInbox = async ( options?: RequestInit): Promise<GetInbox200> => {
+
+  return customFetch<GetInbox200>(getGetInboxUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInboxQueryKey = () => {
+    return [
+    `/api/messages/inbox`
+    ] as const;
+    }
+
+
+export const getGetInboxQueryOptions = <TData = Awaited<ReturnType<typeof getInbox>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInbox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInboxQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInbox>>> = ({ signal }) => getInbox({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInbox>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInboxQueryResult = NonNullable<Awaited<ReturnType<typeof getInbox>>>
+export type GetInboxQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List all conversations (latest message per peer)
+ */
+
+export function useGetInbox<TData = Awaited<ReturnType<typeof getInbox>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInbox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInboxQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMessageThreadUrl = (params: GetMessageThreadParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/messages/conversation?${stringifiedParams}` : `/api/messages/conversation`
+}
+
+/**
+ * @summary Get paginated message thread with a specific user
+ */
+export const getMessageThread = async (params: GetMessageThreadParams, options?: RequestInit): Promise<GetMessageThread200> => {
+
+  return customFetch<GetMessageThread200>(getGetMessageThreadUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMessageThreadQueryKey = (params?: GetMessageThreadParams,) => {
+    return [
+    `/api/messages/conversation`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMessageThreadQueryOptions = <TData = Awaited<ReturnType<typeof getMessageThread>>, TError = ErrorType<ErrorResponse>>(params: GetMessageThreadParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMessageThread>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMessageThreadQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMessageThread>>> = ({ signal }) => getMessageThread(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMessageThread>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMessageThreadQueryResult = NonNullable<Awaited<ReturnType<typeof getMessageThread>>>
+export type GetMessageThreadQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get paginated message thread with a specific user
+ */
+
+export function useGetMessageThread<TData = Awaited<ReturnType<typeof getMessageThread>>, TError = ErrorType<ErrorResponse>>(
+ params: GetMessageThreadParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMessageThread>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMessageThreadQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateMessageStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/messages/${id}/status`
+}
+
+/**
+ * @summary Advance message status (delivered → read). Recipient only.
+ */
+export const updateMessageStatus = async (id: number,
+    updateMessageStatusInput: UpdateMessageStatusInput, options?: RequestInit): Promise<MessageItem> => {
+
+  return customFetch<MessageItem>(getUpdateMessageStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateMessageStatusInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMessageStatusMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMessageStatus>>, TError,{id: number;data: BodyType<UpdateMessageStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMessageStatus>>, TError,{id: number;data: BodyType<UpdateMessageStatusInput>}, TContext> => {
+
+const mutationKey = ['updateMessageStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMessageStatus>>, {id: number;data: BodyType<UpdateMessageStatusInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMessageStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMessageStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateMessageStatus>>>
+    export type UpdateMessageStatusMutationBody = BodyType<UpdateMessageStatusInput>
+    export type UpdateMessageStatusMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Advance message status (delivered → read). Recipient only.
+ */
+export const useUpdateMessageStatus = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMessageStatus>>, TError,{id: number;data: BodyType<UpdateMessageStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMessageStatus>>,
+        TError,
+        {id: number;data: BodyType<UpdateMessageStatusInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateMessageStatusMutationOptions(options));
+    }
+
+export const getDeleteMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/messages/${id}`
+}
+
+/**
+ * @summary Soft-delete a sent message (sender only, only if not yet read)
+ */
+export const deleteMessage = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getDeleteMessageUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMessageMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMessage>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMessage(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMessageMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMessage>>>
+
+    export type DeleteMessageMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Soft-delete a sent message (sender only, only if not yet read)
+ */
+export const useDeleteMessage = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMessage>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMessageMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 
