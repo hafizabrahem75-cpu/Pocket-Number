@@ -91,8 +91,10 @@ router.post("/contacts", requireAuth, async (req: AuthRequest, res): Promise<voi
       createdAt: created.createdAt.toISOString(),
     });
   } catch (err: any) {
-    // Unique constraint violation — already in contacts
-    if (err?.code === "23505") {
+    // Unique constraint violation — already in contacts.
+    // node-postgres wraps the pg error as `err.cause` under drizzle-orm, so
+    // the Postgres error code can live on either the top-level error or `.cause`.
+    if (err?.code === "23505" || err?.cause?.code === "23505") {
       res.status(409).json({ error: "هذا المستخدم موجود بالفعل في جهات اتصالك" });
       return;
     }

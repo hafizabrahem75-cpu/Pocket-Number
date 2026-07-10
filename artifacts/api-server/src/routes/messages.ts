@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, desc, lt, gt, sql } from "drizzle-orm";
+import { eq, and, or, desc, lt, gt, sql, inArray } from "drizzle-orm";
 import { db, usersTable, messagesTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
@@ -122,7 +122,7 @@ router.get(
         .where(
           and(
             eq(messagesTable.recipientId, myId),
-            sql`${messagesTable.id} = ANY(${undeliveredIds})`,
+            inArray(messagesTable.id, undeliveredIds),
           ),
         );
 
