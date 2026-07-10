@@ -52,7 +52,9 @@ function AddContactSheet({
   const add = useAddContact();
 
   const handleSubmit = () => {
-    const pn = pocketNumber.trim().toUpperCase();
+    // Collapse stray/duplicate whitespace so pasted numbers like
+    // "+967  76XXXXXXX" still match the stored "+967 76XXXXXXX" format.
+    const pn = pocketNumber.trim().toUpperCase().replace(/\s+/g, " ");
     if (!pn) return;
     add.mutate(
       { data: { pocketNumber: pn, localName: localName.trim() || undefined } },
@@ -63,7 +65,8 @@ function AddContactSheet({
           onClose();
         },
         onError: (err: any) => {
-          toast({ variant: "destructive", title: "خطأ", description: err?.error ?? "تعذّرت الإضافة" });
+          const message = err?.data?.error ?? err?.message ?? "تعذّرت الإضافة";
+          toast({ variant: "destructive", title: "خطأ", description: message });
         },
       },
     );
@@ -96,7 +99,7 @@ function AddContactSheet({
               رقم الجيب *
             </label>
             <Input
-              placeholder="PN-100001"
+              placeholder="+967 76XXXXXXX"
               value={pocketNumber}
               onChange={(e) => setPocketNumber(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
