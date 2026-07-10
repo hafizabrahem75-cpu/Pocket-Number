@@ -5,6 +5,7 @@ import usersRouter from "./users";
 import friendsRouter from "./friends";
 import contactsRouter from "./contacts";
 import messagesRouter from "./messages";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(usersRouter);
 router.use(friendsRouter);
 router.use(contactsRouter);
 router.use(messagesRouter);
+router.use(adminRouter);
 
 export default router;
