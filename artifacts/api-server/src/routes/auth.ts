@@ -17,25 +17,31 @@ import {
 import { signToken } from "../lib/jwt";
 import { generateOtpCode, getOtpExpiry, sendOtpEmail } from "../lib/otp";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { getPocketNumberConfig } from "../lib/settings";
 
 const router: IRouter = Router();
 
 // ── Pocket Number Generation ─────────────────────────────────────────────────
 
-const PREFIXES = ["71", "73", "77", "700"] as const;
+// Total local digits after the prefix (matches the previous 9-digit scheme:
+// e.g. old "71XXXXXXX" was 2-char prefix + 7 digits).
+const LOCAL_SUFFIX_LENGTH = 7;
 
 /**
- * Generates a unique 9-digit pocket number with one of the prefixes:
- * 71XXXXXXX | 73XXXXXXX | 77XXXXXXX | 700XXXXXX
+ * Generates a unique pocket number as `<countryCode> <prefix>XXXXXXX`
+ * (e.g. "+967 76XXXXXXX"). Country code and prefix are Admin-configurable
+ * runtime settings (see `../lib/settings`), not hardcoded, so they can change
+ * without a code deploy. Only affects newly generated numbers — existing
+ * pocket numbers keep their original format.
  * Retries on collision (DB unique constraint) up to 10 times.
  */
 async function generatePocketNumber(): Promise<string> {
+  const { countryCode, prefix } = await getPocketNumberConfig();
+  const max = Math.pow(10, LOCAL_SUFFIX_LENGTH);
+
   for (let attempt = 0; attempt < 10; attempt++) {
-    const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
-    const remainingDigits = 9 - prefix.length;
-    const max = Math.pow(10, remainingDigits);
-    const suffix = String(Math.floor(Math.random() * max)).padStart(remainingDigits, "0");
-    const candidate = prefix + suffix;
+    const suffix = String(Math.floor(Math.random() * max)).padStart(LOCAL_SUFFIX_LENGTH, "0");
+    const candidate = `${countryCode} ${prefix}${suffix}`;
 
     const [existing] = await db
       .select({ id: usersTable.id })
