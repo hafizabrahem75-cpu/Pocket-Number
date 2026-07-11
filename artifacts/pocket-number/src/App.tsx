@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AppSettingsProvider } from '@/contexts/AppSettingsContext';
 import { ChatLauncherProvider } from '@/contexts/ChatLauncherContext';
 import { CallLauncherProvider } from '@/contexts/CallLauncherContext';
 import { CallOverlay } from '@/components/CallOverlay';
@@ -58,17 +59,19 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <AuthProvider>
-            <ChatLauncherProvider>
-              <CallLauncherProvider>
-                <Router />
-                <CallOverlay />
-                <IncomingCallOverlay />
-              </CallLauncherProvider>
-            </ChatLauncherProvider>
-          </AuthProvider>
-        </WouterRouter>
+        <AppSettingsProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <AuthProvider>
+              <ChatLauncherProvider>
+                <CallLauncherProvider>
+                  <Router />
+                  <CallOverlay />
+                  <IncomingCallOverlay />
+                </CallLauncherProvider>
+              </ChatLauncherProvider>
+            </AuthProvider>
+          </WouterRouter>
+        </AppSettingsProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
