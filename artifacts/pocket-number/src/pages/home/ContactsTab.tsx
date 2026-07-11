@@ -22,10 +22,12 @@ import {
   Search,
   ChevronRight,
   MessageCircle,
+  Phone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useChatLauncher } from "@/contexts/ChatLauncherContext";
+import { useCallLauncher } from "@/contexts/CallLauncherContext";
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -238,7 +240,9 @@ function ContactRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [messaging, setMessaging] = useState(false);
+  const [calling, setCalling] = useState(false);
   const { requestChat } = useChatLauncher();
+  const { startCall } = useCallLauncher();
   const { toast } = useToast();
 
   // Contacts only store the pocket number locally — resolve the underlying
@@ -261,6 +265,27 @@ function ContactRow({
       });
     } finally {
       setMessaging(false);
+    }
+  };
+
+  const handleCall = async () => {
+    setExpanded(false);
+    setCalling(true);
+    try {
+      const peer = await searchUsers({ q: contact.pocketNumber });
+      await startCall({
+        peerId: peer.id,
+        peerName: contact.localName,
+        peerPocketNumber: peer.pocketNumber,
+      });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "تعذّر بدء الاتصال",
+        description: "لم يُعثر على هذا المستخدم",
+      });
+    } finally {
+      setCalling(false);
     }
   };
 
@@ -289,6 +314,18 @@ function ContactRow({
       {/* Expanded actions */}
       {expanded && (
         <div className="flex gap-2 px-4 pb-3 animate-in fade-in slide-in-from-top-1 duration-150">
+          <button
+            onClick={handleCall}
+            disabled={calling}
+            className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-600/8 hover:bg-emerald-600/15 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {calling ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Phone className="w-3.5 h-3.5" />
+            )}
+            اتصال
+          </button>
           <button
             onClick={handleMessage}
             disabled={messaging}

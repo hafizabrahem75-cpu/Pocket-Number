@@ -25,8 +25,10 @@ import {
   CheckCircle2,
   UserX,
   MessageCircle,
+  Phone,
 } from "lucide-react";
 import { useChatLauncher } from "@/contexts/ChatLauncherContext";
+import { useCallLauncher } from "@/contexts/CallLauncherContext";
 
 // ── Status Badge ─────────────────────────────────────────────────────────────
 
@@ -59,6 +61,7 @@ function ResultCard({ user }: { user: PublicUser }) {
   const queryClient = useQueryClient();
   const addContact = useAddContact();
   const { requestChat } = useChatLauncher();
+  const { startCall, isStarting } = useCallLauncher();
   const [, setLocation] = useLocation();
 
   const isSelf = me && user.id === me.id;
@@ -67,6 +70,19 @@ function ResultCard({ user }: { user: PublicUser }) {
   const handleMessage = () => {
     requestChat({ peerId: user.id, peerName: user.name, peerPocketNumber: user.pocketNumber });
     setLocation("/home");
+  };
+
+  const handleCall = async () => {
+    try {
+      await startCall({ peerId: user.id, peerName: user.name, peerPocketNumber: user.pocketNumber });
+      setLocation("/home");
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "تعذّر بدء الاتصال",
+        description: err?.data?.error ?? "حدث خطأ غير متوقع",
+      });
+    }
   };
 
   const handleAdd = () => {
@@ -151,6 +167,19 @@ function ResultCard({ user }: { user: PublicUser }) {
           </div>
         ) : (
           <>
+            <Button
+              className="w-full rounded-xl h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleCall}
+              disabled={isStarting}
+            >
+              {isStarting ? (
+                <Loader2 className="w-5 h-5 animate-spin ml-2" />
+              ) : (
+                <Phone className="w-5 h-5 ml-2" />
+              )}
+              اتصال
+            </Button>
+
             <Button
               variant="outline"
               className="w-full rounded-xl h-12 text-base font-semibold"

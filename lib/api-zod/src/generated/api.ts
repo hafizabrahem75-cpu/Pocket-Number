@@ -132,6 +132,67 @@ export const DeleteMessageResponse = zod.object({
 
 
 /**
+ * Creates a call record in "ringing" status. No audio/WebRTC signaling yet — metadata only.
+ * @summary Start a voice call
+ */
+export const StartCallBody = zod.object({
+  "receiverId": zod.number()
+})
+
+export const StartCallResponse = zod.object({
+  "id": zod.number(),
+  "callerId": zod.number(),
+  "receiverId": zod.number(),
+  "status": zod.enum(['ringing', 'ongoing', 'ended', 'missed', 'declined']),
+  "startTime": zod.coerce.date(),
+  "endTime": zod.coerce.date().nullable()
+}).describe('A single voice call record (metadata only — no audio\/WebRTC yet)')
+
+
+/**
+ * @summary Get paginated call history (as caller or receiver)
+ */
+export const GetCallHistoryQueryParams = zod.object({
+  "before": zod.coerce.number().optional().describe('Cursor — return calls older than this call ID')
+})
+
+export const GetCallHistoryResponse = zod.object({
+  "calls": zod.array(zod.object({
+  "id": zod.number(),
+  "callerId": zod.number(),
+  "receiverId": zod.number(),
+  "status": zod.enum(['ringing', 'ongoing', 'ended', 'missed', 'declined']),
+  "startTime": zod.coerce.date(),
+  "endTime": zod.coerce.date().nullable()
+}).describe('A single voice call record (metadata only — no audio\/WebRTC yet)')),
+  "hasMore": zod.boolean(),
+  "nextCursor": zod.number().nullable()
+})
+
+
+/**
+ * Only the caller or receiver of the call may update it.
+ * @summary Advance call status (ringing → ongoing/missed/declined; ongoing → ended)
+ */
+export const UpdateCallStatusParams = zod.object({
+  "id": zod.coerce.number().describe('Call ID')
+})
+
+export const UpdateCallStatusBody = zod.object({
+  "status": zod.enum(['ongoing', 'ended', 'missed', 'declined'])
+})
+
+export const UpdateCallStatusResponse = zod.object({
+  "id": zod.number(),
+  "callerId": zod.number(),
+  "receiverId": zod.number(),
+  "status": zod.enum(['ringing', 'ongoing', 'ended', 'missed', 'declined']),
+  "startTime": zod.coerce.date(),
+  "endTime": zod.coerce.date().nullable()
+}).describe('A single voice call record (metadata only — no audio\/WebRTC yet)')
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

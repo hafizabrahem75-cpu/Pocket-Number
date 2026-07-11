@@ -8,6 +8,8 @@
 
 export * from './addContactInput';
 export * from './authResponse';
+export * from './callItem';
+export * from './callItemStatus';
 export * from './contactItem';
 export * from './conversationListItem';
 export * from './conversationListItemLastMessage';
@@ -16,6 +18,8 @@ export * from './errorResponse';
 export * from './friendEntry';
 export * from './friendRequestItem';
 export * from './friendRequestItemStatus';
+export * from './getCallHistory200';
+export * from './getCallHistoryParams';
 export * from './getInbox200';
 export * from './getMessageThread200';
 export * from './getMessageThreadParams';
@@ -33,6 +37,9 @@ export * from './resendOtpInput';
 export * from './searchUsersParams';
 export * from './sendFriendRequestInput';
 export * from './sendMessageInput';
+export * from './startCallInput';
+export * from './updateCallStatusInput';
+export * from './updateCallStatusInputStatus';
 export * from './updateContactInput';
 export * from './updateMessageStatusInput';
 export * from './updateMessageStatusInputStatus';

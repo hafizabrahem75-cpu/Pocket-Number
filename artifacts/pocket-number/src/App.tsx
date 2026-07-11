@@ -4,6 +4,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ChatLauncherProvider } from '@/contexts/ChatLauncherContext';
+import { CallLauncherProvider } from '@/contexts/CallLauncherContext';
+import { CallOverlay } from '@/components/CallOverlay';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 import Splash from '@/pages/Splash';
@@ -58,7 +60,10 @@ function App() {
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <AuthProvider>
             <ChatLauncherProvider>
-              <Router />
+              <CallLauncherProvider>
+                <Router />
+                <CallOverlay />
+              </CallLauncherProvider>
             </ChatLauncherProvider>
           </AuthProvider>
         </WouterRouter>

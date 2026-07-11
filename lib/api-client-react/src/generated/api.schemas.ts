@@ -166,6 +166,47 @@ export interface UpdateContactInput {
   localName: string;
 }
 
+export type CallItemStatus = typeof CallItemStatus[keyof typeof CallItemStatus];
+
+
+export const CallItemStatus = {
+  ringing: 'ringing',
+  ongoing: 'ongoing',
+  ended: 'ended',
+  missed: 'missed',
+  declined: 'declined',
+} as const;
+
+/**
+ * A single voice call record (metadata only — no audio/WebRTC yet)
+ */
+export interface CallItem {
+  id: number;
+  callerId: number;
+  receiverId: number;
+  status: CallItemStatus;
+  startTime: string;
+  endTime: string | null;
+}
+
+export interface StartCallInput {
+  receiverId: number;
+}
+
+export type UpdateCallStatusInputStatus = typeof UpdateCallStatusInputStatus[keyof typeof UpdateCallStatusInputStatus];
+
+
+export const UpdateCallStatusInputStatus = {
+  ongoing: 'ongoing',
+  ended: 'ended',
+  missed: 'missed',
+  declined: 'declined',
+} as const;
+
+export interface UpdateCallStatusInput {
+  status: UpdateCallStatusInputStatus;
+}
+
 /**
  * Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward.
  */
@@ -286,6 +327,19 @@ before?: number;
 
 export type GetMessageThread200 = {
   messages: MessageItem[];
+  hasMore: boolean;
+  nextCursor: number | null;
+};
+
+export type GetCallHistoryParams = {
+/**
+ * Cursor — return calls older than this call ID
+ */
+before?: number;
+};
+
+export type GetCallHistory200 = {
+  calls: CallItem[];
   hasMore: boolean;
   nextCursor: number | null;
 };
