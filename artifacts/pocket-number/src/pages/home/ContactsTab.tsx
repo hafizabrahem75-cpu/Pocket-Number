@@ -47,7 +47,7 @@ function AddContactSheet({
 }: {
   onClose: () => void;
 }) {
-  const [pocketNumber, setPocketNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [localName, setLocalName] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -56,10 +56,10 @@ function AddContactSheet({
   const handleSubmit = () => {
     // Collapse stray/duplicate whitespace so pasted numbers like
     // "+967  76XXXXXXX" still match the stored "+967 76XXXXXXX" format.
-    const pn = pocketNumber.trim().toUpperCase().replace(/\s+/g, " ");
+    const pn = phoneNumber.trim().replace(/\s+/g, " ");
     if (!pn) return;
     add.mutate(
-      { data: { pocketNumber: pn, localName: localName.trim() || undefined } },
+      { data: { phoneNumber: pn, localName: localName.trim() || undefined } },
       {
         onSuccess: () => {
           toast({ title: "تمت الإضافة", description: "جهة الاتصال في قائمتك" });
@@ -98,17 +98,20 @@ function AddContactSheet({
         <div className="space-y-3">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              رقم الجيب *
+              رقم الهاتف *
             </label>
             <Input
               placeholder="+967 76XXXXXXX"
-              value={pocketNumber}
-              onChange={(e) => setPocketNumber(e.target.value)}
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               dir="ltr"
               className="font-mono text-sm"
               autoFocus
             />
+            <p className="text-[11px] text-muted-foreground">
+              يمكنك إضافة أي رقم هاتف، حتى لو لم يكن مسجلاً في التطبيق
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -131,7 +134,7 @@ function AddContactSheet({
         <Button
           className="w-full rounded-xl h-12 text-base font-semibold"
           onClick={handleSubmit}
-          disabled={add.isPending || !pocketNumber.trim()}
+          disabled={add.isPending || !phoneNumber.trim()}
         >
           {add.isPending ? (
             <Loader2 className="w-5 h-5 animate-spin ml-2" />
@@ -491,7 +494,7 @@ export default function ContactsTab() {
             </div>
             <p className="font-bold text-foreground text-base mb-2">لا توجد جهات اتصال</p>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
-              أضف جهات اتصال برقم الجيب وامنحها أسماء خاصة لا يراها أحد غيرك
+              أضف أي رقم هاتف وامنحه اسماً خاصاً لا يراه أحد غيرك — وسيتم ربطه تلقائياً إذا كان مسجلاً في التطبيق
             </p>
             <Button
               className="mt-6 rounded-xl px-6 h-11 font-semibold"

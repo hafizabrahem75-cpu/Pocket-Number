@@ -87,7 +87,7 @@ function ResultCard({ user }: { user: PublicUser }) {
 
   const handleAdd = () => {
     addContact.mutate(
-      { data: { pocketNumber: user.pocketNumber } },
+      { data: { phoneNumber: user.pocketNumber } },
       {
         onSuccess: () => {
           setAdded(true);
