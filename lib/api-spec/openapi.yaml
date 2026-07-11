@@ -703,8 +703,12 @@ paths:
     post:
       operationId: addContact
       tags: [contacts]
-      summary: Add a contact by Pocket Number
-      description: Adds a user to the caller's personal contacts book with an optional local name
+      summary: Add a contact by phone number
+      description: >-
+        Adds any phone number to the caller's personal contacts book with an
+        optional local name, like a phone's contacts app. Automatically links
+        to a Pocket Number account when the number is registered; otherwise
+        stored as a local-only contact that can be linked automatically later.
       security:
         - bearerAuth: []
       requestBody:
@@ -1038,9 +1042,13 @@ components:
           description: Custom name chosen by the owner — private, never visible to others
         pocketNumber:
           type: string
-          description: The contact's Pocket Number (e.g. PN-100001)
+          description: >-
+            The contact's phone number in canonical form (e.g. "+967 76XXXXXXX").
+            Shown whether or not the number belongs to a registered Pocket
+            Number user.
         isVerified:
           type: boolean
+          description: True only when this number is linked to a registered, verified Pocket Number account.
         createdAt:
           type: string
           format: date-time
@@ -1054,16 +1062,20 @@ components:
     AddContactInput:
       type: object
       properties:
-        pocketNumber:
+        phoneNumber:
           type: string
-          description: Pocket Number of the user to add (e.g. PN-100001)
+          description: >-
+            Any phone number, registered or not. Accepts "+96776XXXXXXX",
+            "96776XXXXXXX", or "76XXXXXXX" — spaces and dashes are ignored.
+            If the number belongs to a registered Pocket Number user, the
+            contact is linked to that account automatically.
         localName:
           type: string
           minLength: 1
           maxLength: 50
-          description: Optional custom name. Defaults to the contact's real name if omitted.
+          description: Optional custom name. Defaults to the contact's real name if omitted (or to the phone number itself when unregistered).
       required:
-        - pocketNumber
+        - phoneNumber
 
     UpdateContactInput:
       type: object

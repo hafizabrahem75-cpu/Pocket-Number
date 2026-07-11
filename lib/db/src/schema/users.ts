@@ -29,7 +29,9 @@ export const pocketNumberCounterTable = pgTable("pocket_number_counter", {
   lastNumber: integer("last_number").notNull().default(100000),
 });
 
-// Personal contacts book — each user keeps their own list with custom local names
+// Personal contacts book — each user keeps their own list with custom local names.
+// Works like a phone's contacts app: any phone number can be saved, whether or
+// not it belongs to a registered Pocket Number user.
 export const contactsTable = pgTable(
   "contacts",
   {
@@ -37,15 +39,21 @@ export const contactsTable = pgTable(
     ownerId: integer("owner_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
-    contactUserId: integer("contact_user_id")
-      .notNull()
-      .references(() => usersTable.id, { onDelete: "cascade" }),
+    // Nullable — set only when the phone number belongs to a registered user.
+    // Auto-linked at add-time, and retroactively when that number registers later.
+    contactUserId: integer("contact_user_id").references(() => usersTable.id, {
+      onDelete: "cascade",
+    }),
+    // Canonical normalized phone number (e.g. "+967 76XXXXXXX"), kept even
+    // when the contact isn't a registered user yet — this is what lets a
+    // matching future registration auto-link the contact.
+    phoneNumber: text("phone_number").notNull(),
     // The custom name the owner chose — never visible to anyone else
     localName: text("local_name").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [unique("unique_contact").on(table.ownerId, table.contactUserId)],
+  (table) => [unique("unique_contact_phone").on(table.ownerId, table.phoneNumber)],
 );
 
 // Friendship / contact network

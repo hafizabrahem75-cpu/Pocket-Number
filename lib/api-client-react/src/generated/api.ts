@@ -1717,8 +1717,8 @@ export const getAddContactUrl = () => {
 }
 
 /**
- * Adds a user to the caller's personal contacts book with an optional local name
- * @summary Add a contact by Pocket Number
+ * Adds any phone number to the caller's personal contacts book with an optional local name, like a phone's contacts app. Automatically links to a Pocket Number account when the number is registered; otherwise stored as a local-only contact that can be linked automatically later.
+ * @summary Add a contact by phone number
  */
 export const addContact = async (addContactInput: AddContactInput, options?: RequestInit): Promise<ContactItem> => {
 
@@ -1767,7 +1767,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type AddContactMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Add a contact by Pocket Number
+ * @summary Add a contact by phone number
  */
 export const useAddContact = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addContact>>, TError,{data: BodyType<AddContactInput>}, TContext>, request?: SecondParameter<typeof customFetch>}

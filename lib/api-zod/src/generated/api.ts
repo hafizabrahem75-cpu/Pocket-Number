@@ -440,31 +440,31 @@ export const CancelFriendRequestResponse = zod.object({
 export const GetContactsResponseItem = zod.object({
   "id": zod.number(),
   "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
-  "pocketNumber": zod.string().describe('The contact\'s Pocket Number (e.g. PN-100001)'),
-  "isVerified": zod.boolean(),
+  "pocketNumber": zod.string().describe('The contact\'s phone number in canonical form (e.g. \"+967 76XXXXXXX\"). Shown whether or not the number belongs to a registered Pocket Number user.'),
+  "isVerified": zod.boolean().describe('True only when this number is linked to a registered, verified Pocket Number account.'),
   "createdAt": zod.coerce.date()
 }).describe('A single entry in the caller\'s personal contacts book')
 export const GetContactsResponse = zod.array(GetContactsResponseItem)
 
 
 /**
- * Adds a user to the caller's personal contacts book with an optional local name
- * @summary Add a contact by Pocket Number
+ * Adds any phone number to the caller's personal contacts book with an optional local name, like a phone's contacts app. Automatically links to a Pocket Number account when the number is registered; otherwise stored as a local-only contact that can be linked automatically later.
+ * @summary Add a contact by phone number
  */
 export const addContactBodyLocalNameMax = 50;
 
 
 
 export const AddContactBody = zod.object({
-  "pocketNumber": zod.string().describe('Pocket Number of the user to add (e.g. PN-100001)'),
-  "localName": zod.string().min(1).max(addContactBodyLocalNameMax).optional().describe('Optional custom name. Defaults to the contact\'s real name if omitted.')
+  "phoneNumber": zod.string().describe('Any phone number, registered or not. Accepts \"+96776XXXXXXX\", \"96776XXXXXXX\", or \"76XXXXXXX\" — spaces and dashes are ignored. If the number belongs to a registered Pocket Number user, the contact is linked to that account automatically.'),
+  "localName": zod.string().min(1).max(addContactBodyLocalNameMax).optional().describe('Optional custom name. Defaults to the contact\'s real name if omitted (or to the phone number itself when unregistered).')
 })
 
 export const AddContactResponse = zod.object({
   "id": zod.number(),
   "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
-  "pocketNumber": zod.string().describe('The contact\'s Pocket Number (e.g. PN-100001)'),
-  "isVerified": zod.boolean(),
+  "pocketNumber": zod.string().describe('The contact\'s phone number in canonical form (e.g. \"+967 76XXXXXXX\"). Shown whether or not the number belongs to a registered Pocket Number user.'),
+  "isVerified": zod.boolean().describe('True only when this number is linked to a registered, verified Pocket Number account.'),
   "createdAt": zod.coerce.date()
 }).describe('A single entry in the caller\'s personal contacts book')
 
@@ -487,8 +487,8 @@ export const UpdateContactBody = zod.object({
 export const UpdateContactResponse = zod.object({
   "id": zod.number(),
   "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
-  "pocketNumber": zod.string().describe('The contact\'s Pocket Number (e.g. PN-100001)'),
-  "isVerified": zod.boolean(),
+  "pocketNumber": zod.string().describe('The contact\'s phone number in canonical form (e.g. \"+967 76XXXXXXX\"). Shown whether or not the number belongs to a registered Pocket Number user.'),
+  "isVerified": zod.boolean().describe('True only when this number is linked to a registered, verified Pocket Number account.'),
   "createdAt": zod.coerce.date()
 }).describe('A single entry in the caller\'s personal contacts book')
 

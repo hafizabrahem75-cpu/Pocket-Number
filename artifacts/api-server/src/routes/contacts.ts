@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { db, usersTable, contactsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { normalizePhoneNumber } from "../lib/phone";
 
 const router: IRouter = Router();
 
@@ -17,16 +18,18 @@ const LOCAL_NAME_MAX = 50;
 router.get("/contacts", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const ownerId = req.userId!;
 
+  // LEFT JOIN: unregistered numbers have no matching user row.
   const rows = await db
     .select({
       id: contactsTable.id,
       localName: contactsTable.localName,
       createdAt: contactsTable.createdAt,
-      pocketNumber: usersTable.pocketNumber,
-      isVerified: usersTable.isVerified,
+      phoneNumber: contactsTable.phoneNumber,
+      linkedPocketNumber: usersTable.pocketNumber,
+      linkedIsVerified: usersTable.isVerified,
     })
     .from(contactsTable)
-    .innerJoin(usersTable, eq(usersTable.id, contactsTable.contactUserId))
+    .leftJoin(usersTable, eq(usersTable.id, contactsTable.contactUserId))
     .where(eq(contactsTable.ownerId, ownerId))
     .orderBy(contactsTable.localName);
 
@@ -34,37 +37,38 @@ router.get("/contacts", requireAuth, async (req: AuthRequest, res): Promise<void
     rows.map((row) => ({
       id: row.id,
       localName: row.localName,
-      pocketNumber: row.pocketNumber,
-      isVerified: row.isVerified,
+      pocketNumber: row.linkedPocketNumber ?? row.phoneNumber,
+      isVerified: row.linkedIsVerified ?? false,
       createdAt: row.createdAt.toISOString(),
     })),
   );
 });
 
-// POST /contacts — add a contact by Pocket Number
+// POST /contacts — add a contact by phone number (registered or not)
 router.post("/contacts", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const ownerId = req.userId!;
-  const { pocketNumber, localName } = req.body ?? {};
+  const { phoneNumber, localName } = req.body ?? {};
 
-  if (!pocketNumber || typeof pocketNumber !== "string") {
-    res.status(400).json({ error: "pocketNumber مطلوب" });
+  if (!phoneNumber || typeof phoneNumber !== "string") {
+    res.status(400).json({ error: "رقم الهاتف مطلوب" });
     return;
   }
 
-  const normalised = pocketNumber.trim().toUpperCase();
+  const normalized = await normalizePhoneNumber(phoneNumber);
+  if (!normalized) {
+    res.status(400).json({ error: "صيغة رقم الهاتف غير صحيحة" });
+    return;
+  }
 
-  // Resolve target user
+  // Resolve target user, if the number is registered. New-format accounts
+  // store the canonical "+<cc> <local>" form; legacy accounts (created before
+  // the country-code change) store just the bare local digits.
   const [target] = await db
     .select({ id: usersTable.id, name: usersTable.name, pocketNumber: usersTable.pocketNumber, isVerified: usersTable.isVerified })
     .from(usersTable)
-    .where(eq(usersTable.pocketNumber, normalised));
+    .where(or(eq(usersTable.pocketNumber, normalized.canonical), eq(usersTable.pocketNumber, normalized.local)));
 
-  if (!target) {
-    res.status(404).json({ error: "لم يُعثر على مستخدم بهذا الرقم" });
-    return;
-  }
-
-  if (target.id === ownerId) {
+  if (target && target.id === ownerId) {
     res.status(400).json({ error: "لا يمكنك إضافة نفسك إلى جهات الاتصال" });
     return;
   }
@@ -75,19 +79,31 @@ router.post("/contacts", requireAuth, async (req: AuthRequest, res): Promise<voi
     res.status(400).json({ error: `الاسم المحلي يجب ألا يتجاوز ${LOCAL_NAME_MAX} حرفاً` });
     return;
   }
-  const resolvedLocalName = trimmedLocalName.length > 0 ? trimmedLocalName : target.name;
+  const fallbackName = target?.name ?? normalized.canonical;
+  const resolvedLocalName = trimmedLocalName.length > 0 ? trimmedLocalName : fallbackName;
+
+  // Store the target's exact registered pocket number when linked (so it
+  // stays correct even if formatting differs from our canonical form), or
+  // the canonical form for a local-only contact — this is also the value
+  // future registrations are matched against for auto-linking.
+  const storedPhoneNumber = target?.pocketNumber ?? normalized.canonical;
 
   try {
     const [created] = await db
       .insert(contactsTable)
-      .values({ ownerId, contactUserId: target.id, localName: resolvedLocalName })
+      .values({
+        ownerId,
+        contactUserId: target?.id ?? null,
+        phoneNumber: storedPhoneNumber,
+        localName: resolvedLocalName,
+      })
       .returning();
 
     res.status(201).json({
       id: created.id,
       localName: created.localName,
-      pocketNumber: target.pocketNumber,
-      isVerified: target.isVerified,
+      pocketNumber: target?.pocketNumber ?? storedPhoneNumber,
+      isVerified: target?.isVerified ?? false,
       createdAt: created.createdAt.toISOString(),
     });
   } catch (err: any) {
@@ -95,7 +111,7 @@ router.post("/contacts", requireAuth, async (req: AuthRequest, res): Promise<voi
     // node-postgres wraps the pg error as `err.cause` under drizzle-orm, so
     // the Postgres error code can live on either the top-level error or `.cause`.
     if (err?.code === "23505" || err?.cause?.code === "23505") {
-      res.status(409).json({ error: "هذا المستخدم موجود بالفعل في جهات اتصالك" });
+      res.status(409).json({ error: "هذا الرقم موجود بالفعل في جهات اتصالك" });
       return;
     }
     throw err;

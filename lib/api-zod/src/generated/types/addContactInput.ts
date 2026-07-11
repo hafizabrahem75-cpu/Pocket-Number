@@ -7,10 +7,10 @@
  */
 
 export interface AddContactInput {
-  /** Pocket Number of the user to add (e.g. PN-100001) */
-  pocketNumber: string;
+  /** Any phone number, registered or not. Accepts "+96776XXXXXXX", "96776XXXXXXX", or "76XXXXXXX" — spaces and dashes are ignored. If the number belongs to a registered Pocket Number user, the contact is linked to that account automatically. */
+  phoneNumber: string;
   /**
-     * Optional custom name. Defaults to the contact's real name if omitted.
+     * Optional custom name. Defaults to the contact's real name if omitted (or to the phone number itself when unregistered).
      * @minLength 1
      * @maxLength 50
      */

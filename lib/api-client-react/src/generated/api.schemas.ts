@@ -140,17 +140,18 @@ export interface ContactItem {
   id: number;
   /** Custom name chosen by the owner — private, never visible to others */
   localName: string;
-  /** The contact's Pocket Number (e.g. PN-100001) */
+  /** The contact's phone number in canonical form (e.g. "+967 76XXXXXXX"). Shown whether or not the number belongs to a registered Pocket Number user. */
   pocketNumber: string;
+  /** True only when this number is linked to a registered, verified Pocket Number account. */
   isVerified: boolean;
   createdAt: string;
 }
 
 export interface AddContactInput {
-  /** Pocket Number of the user to add (e.g. PN-100001) */
-  pocketNumber: string;
+  /** Any phone number, registered or not. Accepts "+96776XXXXXXX", "96776XXXXXXX", or "76XXXXXXX" — spaces and dashes are ignored. If the number belongs to a registered Pocket Number user, the contact is linked to that account automatically. */
+  phoneNumber: string;
   /**
-     * Optional custom name. Defaults to the contact's real name if omitted.
+     * Optional custom name. Defaults to the contact's real name if omitted (or to the phone number itself when unregistered).
      * @minLength 1
      * @maxLength 50
      */

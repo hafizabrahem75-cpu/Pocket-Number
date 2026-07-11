@@ -13,8 +13,9 @@ export interface ContactItem {
   id: number;
   /** Custom name chosen by the owner — private, never visible to others */
   localName: string;
-  /** The contact's Pocket Number (e.g. PN-100001) */
+  /** The contact's phone number in canonical form (e.g. "+967 76XXXXXXX"). Shown whether or not the number belongs to a registered Pocket Number user. */
   pocketNumber: string;
+  /** True only when this number is linked to a registered, verified Pocket Number account. */
   isVerified: boolean;
   createdAt: Date;
 }
