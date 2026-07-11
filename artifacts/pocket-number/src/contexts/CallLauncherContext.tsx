@@ -1,6 +1,14 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { useStartCall, useUpdateCallStatus, searchUsers } from "@workspace/api-client-react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  useStartCall,
+  useUpdateCallStatus,
+  useGetCallHistory,
+  getGetCallHistoryQueryKey,
+  searchUsers,
+  getUserById,
+} from "@workspace/api-client-react";
 import type { CallItem } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 /** Minimal identity needed to place a call. */
 export interface CallPeer {
@@ -26,15 +34,66 @@ interface CallLauncherState {
   isStarting: boolean;
   error: string | null;
   clearError: () => void;
+  /** A call ringing for the current user (someone else called them), if any. */
+  incomingCall: CallItem | null;
+  /** Accept the incoming call (marks it ongoing). */
+  acceptIncomingCall: () => void;
+  /** Reject the incoming call (marks it declined). */
+  rejectIncomingCall: () => void;
 }
 
 const CallLauncherContext = createContext<CallLauncherState | null>(null);
 
 export function CallLauncherProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dismissedCallId, setDismissedCallId] = useState<number | null>(null);
   const startCallMutation = useStartCall();
   const updateStatusMutation = useUpdateCallStatus();
+
+  // Poll call history for a ringing call placed by someone else to this user.
+  // No WebSocket/push exists yet, so short polling mirrors the pattern already
+  // used for messages (see MessagesTab).
+  const { data: historyData } = useGetCallHistory(undefined, {
+    query: { queryKey: getGetCallHistoryQueryKey(undefined), enabled: !!user, refetchInterval: 3000 },
+  });
+
+  const incomingCall = useMemo<CallItem | null>(() => {
+    if (!user) return null;
+    const calls = historyData?.calls ?? [];
+    return (
+      calls.find(
+        (c) =>
+          c.status === "ringing" && c.receiverId === user.id && c.callerId !== user.id && c.id !== dismissedCallId,
+      ) ?? null
+    );
+  }, [historyData, user, dismissedCallId]);
+
+  const acceptIncomingCall = useCallback(async () => {
+    if (!incomingCall) return;
+    const call = incomingCall;
+    setDismissedCallId(call.id);
+    try {
+      const updated = await updateStatusMutation.mutateAsync({
+        id: call.id,
+        data: { status: "ongoing" },
+      });
+      const caller = await getUserById(call.callerId);
+      setActiveCall({
+        call: updated,
+        peer: { peerId: caller.id, peerName: caller.name, peerPocketNumber: caller.pocketNumber },
+      });
+    } catch {
+      // Best-effort — if this fails the incoming overlay simply closes.
+    }
+  }, [incomingCall, updateStatusMutation]);
+
+  const rejectIncomingCall = useCallback(() => {
+    if (!incomingCall) return;
+    setDismissedCallId(incomingCall.id);
+    updateStatusMutation.mutate({ id: incomingCall.id, data: { status: "declined" } });
+  }, [incomingCall, updateStatusMutation]);
 
   const startCall = useCallback(
     async (peer: CallPeer) => {
@@ -92,6 +151,9 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
         isStarting: startCallMutation.isPending,
         error,
         clearError,
+        incomingCall,
+        acceptIncomingCall,
+        rejectIncomingCall,
       }}
     >
       {children}
