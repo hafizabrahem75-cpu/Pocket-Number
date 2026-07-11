@@ -9,6 +9,94 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List users (paginated, newest-first)
+ */
+export const AdminListUsersQueryParams = zod.object({
+  "before": zod.coerce.number().optional().describe('Cursor — return users older than this user ID')
+})
+
+export const AdminListUsersResponse = zod.object({
+  "users": zod.array(zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin']),
+  "isVerified": zod.boolean(),
+  "isOnline": zod.boolean(),
+  "isSuspended": zod.boolean(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}).describe('A user record as seen by an admin')),
+  "hasMore": zod.boolean(),
+  "nextCursor": zod.number().nullable()
+})
+
+
+/**
+ * @summary Get user details
+ */
+export const AdminGetUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminGetUserResponse = zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin']),
+  "isVerified": zod.boolean(),
+  "isOnline": zod.boolean(),
+  "isSuspended": zod.boolean(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}).describe('A user record as seen by an admin')
+
+
+/**
+ * @summary Suspend a user account (blocks future logins)
+ */
+export const AdminSuspendUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminSuspendUserResponse = zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin']),
+  "isVerified": zod.boolean(),
+  "isOnline": zod.boolean(),
+  "isSuspended": zod.boolean(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}).describe('A user record as seen by an admin')
+
+
+/**
+ * @summary Restore (unsuspend) a user account
+ */
+export const AdminRestoreUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminRestoreUserResponse = zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin']),
+  "isVerified": zod.boolean(),
+  "isOnline": zod.boolean(),
+  "isSuspended": zod.boolean(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}).describe('A user record as seen by an admin')
+
+
+/**
  * Stores an opaque push token for this device. Re-registering an existing token reassigns it to the caller — no push provider (e.g. Firebase) is wired up yet, this only persists the linkage.
  * @summary Register (or refresh) a device token for the current user
  */

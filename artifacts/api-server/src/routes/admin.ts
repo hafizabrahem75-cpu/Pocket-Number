@@ -1,29 +1,48 @@
 import { Router, type IRouter } from "express";
+import { eq, desc, lt } from "drizzle-orm";
 import {
+  db,
+  usersTable,
   POCKET_NUMBER_COUNTRY_CODE_KEY,
   POCKET_NUMBER_PREFIX_KEY,
 } from "@workspace/db";
 import { getPocketNumberConfig, setSetting } from "../lib/settings";
+import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
-/**
- * Minimal Admin-only guard: requires the `x-admin-secret` header to match
- * the ADMIN_SECRET environment secret. This is a placeholder until a full
- * Admin auth system exists — it only protects the settings endpoints below.
- */
-function requireAdmin(req: any, res: any, next: any): void {
-  const provided = req.header("x-admin-secret");
-  const expected = process.env["ADMIN_SECRET"];
-  if (!expected || !provided || provided !== expected) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  next();
+// Every /admin route requires a valid session AND the "admin" role.
+router.use("/admin", requireAuth, requireAdmin);
+
+const PAGE_SIZE = 50;
+
+function parsePositiveInt(raw: string | string[] | undefined): number | null {
+  if (!raw || Array.isArray(raw)) return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+function serializeAdminUser(u: typeof usersTable.$inferSelect) {
+  return {
+    id: u.id,
+    pocketNumber: u.pocketNumber,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    isVerified: u.isVerified,
+    isOnline: u.isOnline,
+    isSuspended: u.isSuspended,
+    lastSeenAt: u.lastSeenAt ? u.lastSeenAt.toISOString() : null,
+    createdAt: u.createdAt.toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Settings (Pocket Number country code / prefix)
+// ---------------------------------------------------------------------------
+
 // GET /admin/settings/pocket-number — current country code + prefix
-router.get("/admin/settings/pocket-number", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/settings/pocket-number", async (_req, res): Promise<void> => {
   const config = await getPocketNumberConfig();
   res.json(config);
 });
@@ -31,7 +50,7 @@ router.get("/admin/settings/pocket-number", requireAdmin, async (_req, res): Pro
 // PATCH /admin/settings/pocket-number — update country code and/or prefix.
 // Only affects pocket numbers generated after this change; existing users
 // keep their current numbers.
-router.patch("/admin/settings/pocket-number", requireAdmin, async (req, res): Promise<void> => {
+router.patch("/admin/settings/pocket-number", async (req, res): Promise<void> => {
   const { countryCode, prefix } = req.body ?? {};
 
   if (countryCode !== undefined) {
@@ -52,6 +71,94 @@ router.patch("/admin/settings/pocket-number", requireAdmin, async (req, res): Pr
 
   const config = await getPocketNumberConfig();
   res.json(config);
+});
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+// GET /admin/users — paginated user list, newest-first
+router.get("/admin/users", async (req, res): Promise<void> => {
+  const beforeId = parsePositiveInt(req.query.before as string | undefined);
+
+  const users = await db
+    .select()
+    .from(usersTable)
+    .where(beforeId ? lt(usersTable.id, beforeId) : undefined)
+    .orderBy(desc(usersTable.id))
+    .limit(PAGE_SIZE);
+
+  res.json({
+    users: users.map(serializeAdminUser),
+    hasMore: users.length === PAGE_SIZE,
+    nextCursor: users.length === PAGE_SIZE ? users[users.length - 1].id : null,
+  });
+});
+
+// GET /admin/users/:id — user details
+router.get("/admin/users/:id", async (req, res): Promise<void> => {
+  const id = parsePositiveInt(req.params.id);
+  if (!id) {
+    res.status(400).json({ error: "Invalid user id" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json(serializeAdminUser(user));
+});
+
+// PATCH /admin/users/:id/suspend — lock the account (blocks future logins)
+router.patch("/admin/users/:id/suspend", async (req: AuthRequest, res): Promise<void> => {
+  const id = parsePositiveInt(req.params.id);
+  if (!id) {
+    res.status(400).json({ error: "Invalid user id" });
+    return;
+  }
+
+  if (id === req.userId) {
+    res.status(400).json({ error: "You cannot suspend your own account" });
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set({ isSuspended: true })
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json(serializeAdminUser(user));
+});
+
+// PATCH /admin/users/:id/restore — lift a suspension
+router.patch("/admin/users/:id/restore", async (_req, res): Promise<void> => {
+  const id = parsePositiveInt(_req.params.id);
+  if (!id) {
+    res.status(400).json({ error: "Invalid user id" });
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set({ isSuspended: false })
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json(serializeAdminUser(user));
 });
 
 export default router;

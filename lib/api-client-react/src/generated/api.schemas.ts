@@ -242,6 +242,30 @@ export interface RegisterDeviceInput {
   platform: RegisterDeviceInputPlatform;
 }
 
+export type AdminUserItemRole = typeof AdminUserItemRole[keyof typeof AdminUserItemRole];
+
+
+export const AdminUserItemRole = {
+  user: 'user',
+  admin: 'admin',
+} as const;
+
+/**
+ * A user record as seen by an admin
+ */
+export interface AdminUserItem {
+  id: number;
+  pocketNumber: string;
+  name: string;
+  email: string;
+  role: AdminUserItemRole;
+  isVerified: boolean;
+  isOnline: boolean;
+  isSuspended: boolean;
+  lastSeenAt: string | null;
+  createdAt: string;
+}
+
 /**
  * Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward.
  */
@@ -344,6 +368,19 @@ export interface ConversationListItem {
   unreadCount: number;
   lastMessage: ConversationListItemLastMessage;
 }
+
+export type AdminListUsersParams = {
+/**
+ * Cursor — return users older than this user ID
+ */
+before?: number;
+};
+
+export type AdminListUsers200 = {
+  users: AdminUserItem[];
+  hasMore: boolean;
+  nextCursor: number | null;
+};
 
 export type GetInbox200 = {
   conversations: ConversationListItem[];

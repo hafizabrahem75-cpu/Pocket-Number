@@ -12,6 +12,10 @@ export const usersTable = pgTable("users", {
   isOnline: boolean("is_online").notNull().default(false),
   lastSeenAt: timestamp("last_seen_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  /** Role-based authorization — only "admin" may access the admin namespace. */
+  role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
+  /** Admin-controlled account lock. Suspended users cannot log in. */
+  isSuspended: boolean("is_suspended").notNull().default(false),
 });
 
 export const otpCodesTable = pgTable("otp_codes", {

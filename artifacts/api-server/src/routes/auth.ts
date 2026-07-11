@@ -251,6 +251,11 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  if (user.isSuspended) {
+    res.status(403).json({ error: "تم تعليق هذا الحساب" });
+    return;
+  }
+
   if (!user.isVerified) {
     res.status(403).json({ error: "يرجى تفعيل حسابك عبر رمز التحقق المرسل إلى بريدك الإلكتروني" });
     return;

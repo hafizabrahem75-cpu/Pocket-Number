@@ -24,7 +24,184 @@ tags:
     description: Voice call foundation (metadata/history only — no audio/WebRTC yet)
   - name: devices
     description: Notification foundation — device token registration only, no push provider yet
+  - name: admin
+    description: Admin namespace — requires the "admin" role. User management foundation only.
 paths:
+  # ---------------------------------------------------------------------------
+  # Admin — Users
+  # ---------------------------------------------------------------------------
+
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List users (paginated, newest-first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: before
+          required: false
+          schema:
+            type: integer
+          description: Cursor — return users older than this user ID
+      responses:
+        "200":
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminUserItem"
+                  hasMore:
+                    type: boolean
+                  nextCursor:
+                    type: integer
+                    nullable: true
+                required:
+                  - users
+                  - hasMore
+                  - nextCursor
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden — caller is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users/{id}:
+    get:
+      operationId: adminGetUser
+      tags: [admin]
+      summary: Get user details
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserItem"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden — caller is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users/{id}/suspend:
+    patch:
+      operationId: adminSuspendUser
+      tags: [admin]
+      summary: Suspend a user account (blocks future logins)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User suspended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserItem"
+        "400":
+          description: Invalid request (e.g. attempting to suspend yourself)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden — caller is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users/{id}/restore:
+    patch:
+      operationId: adminRestoreUser
+      tags: [admin]
+      summary: Restore (unsuspend) a user account
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserItem"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden — caller is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ---------------------------------------------------------------------------
   # Devices (notification foundation — no push provider yet)
   # ---------------------------------------------------------------------------
@@ -1419,6 +1596,50 @@ components:
       required:
         - token
         - platform
+
+    # -------------------------------------------------------------------------
+    # Admin
+    # -------------------------------------------------------------------------
+
+    AdminUserItem:
+      type: object
+      description: A user record as seen by an admin
+      properties:
+        id:
+          type: integer
+        pocketNumber:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        isVerified:
+          type: boolean
+        isOnline:
+          type: boolean
+        isSuspended:
+          type: boolean
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - pocketNumber
+        - name
+        - email
+        - role
+        - isVerified
+        - isOnline
+        - isSuspended
+        - lastSeenAt
+        - createdAt
 
     # -------------------------------------------------------------------------
     # Messages

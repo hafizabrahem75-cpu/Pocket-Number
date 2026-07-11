@@ -21,6 +21,9 @@ import type {
 
 import type {
   AddContactInput,
+  AdminListUsers200,
+  AdminListUsersParams,
+  AdminUserItem,
   AuthResponse,
   CallItem,
   ContactItem,
@@ -80,6 +83,309 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getAdminListUsersUrl = (params?: AdminListUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/users?${stringifiedParams}` : `/api/admin/users`
+}
+
+/**
+ * @summary List users (paginated, newest-first)
+ */
+export const adminListUsers = async (params?: AdminListUsersParams, options?: RequestInit): Promise<AdminListUsers200> => {
+
+  return customFetch<AdminListUsers200>(getAdminListUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminListUsersQueryKey = (params?: AdminListUsersParams,) => {
+    return [
+    `/api/admin/users`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getAdminListUsersQueryOptions = <TData = Awaited<ReturnType<typeof adminListUsers>>, TError = ErrorType<ErrorResponse>>(params?: AdminListUsersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminListUsersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListUsers>>> = ({ signal }) => adminListUsers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type AdminListUsersQueryResult = NonNullable<Awaited<ReturnType<typeof adminListUsers>>>
+export type AdminListUsersQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List users (paginated, newest-first)
+ */
+
+export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUsers>>, TError = ErrorType<ErrorResponse>>(
+ params?: AdminListUsersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getAdminListUsersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAdminGetUserUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/users/${id}`
+}
+
+/**
+ * @summary Get user details
+ */
+export const adminGetUser = async (id: number, options?: RequestInit): Promise<AdminUserItem> => {
+
+  return customFetch<AdminUserItem>(getAdminGetUserUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminGetUserQueryKey = (id: number,) => {
+    return [
+    `/api/admin/users/${id}`
+    ] as const;
+    }
+
+
+export const getAdminGetUserQueryOptions = <TData = Awaited<ReturnType<typeof adminGetUser>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminGetUserQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUser>>> = ({ signal }) => adminGetUser(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type AdminGetUserQueryResult = NonNullable<Awaited<ReturnType<typeof adminGetUser>>>
+export type AdminGetUserQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get user details
+ */
+
+export function useAdminGetUser<TData = Awaited<ReturnType<typeof adminGetUser>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getAdminGetUserQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAdminSuspendUserUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/users/${id}/suspend`
+}
+
+/**
+ * @summary Suspend a user account (blocks future logins)
+ */
+export const adminSuspendUser = async (id: number, options?: RequestInit): Promise<AdminUserItem> => {
+
+  return customFetch<AdminUserItem>(getAdminSuspendUserUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminSuspendUserMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['adminSuspendUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminSuspendUser>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminSuspendUser(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminSuspendUserMutationResult = NonNullable<Awaited<ReturnType<typeof adminSuspendUser>>>
+
+    export type AdminSuspendUserMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Suspend a user account (blocks future logins)
+ */
+export const useAdminSuspendUser = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminSuspendUser>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getAdminSuspendUserMutationOptions(options));
+    }
+
+export const getAdminRestoreUserUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/users/${id}/restore`
+}
+
+/**
+ * @summary Restore (unsuspend) a user account
+ */
+export const adminRestoreUser = async (id: number, options?: RequestInit): Promise<AdminUserItem> => {
+
+  return customFetch<AdminUserItem>(getAdminRestoreUserUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminRestoreUserMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRestoreUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminRestoreUser>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['adminRestoreUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminRestoreUser>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminRestoreUser(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminRestoreUserMutationResult = NonNullable<Awaited<ReturnType<typeof adminRestoreUser>>>
+
+    export type AdminRestoreUserMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Restore (unsuspend) a user account
+ */
+export const useAdminRestoreUser = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRestoreUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminRestoreUser>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getAdminRestoreUserMutationOptions(options));
+    }
 
 export const getRegisterDeviceUrl = () => {
 

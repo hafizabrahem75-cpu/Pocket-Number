@@ -7,6 +7,10 @@
  */
 
 export * from './addContactInput';
+export * from './adminListUsers200';
+export * from './adminListUsersParams';
+export * from './adminUserItem';
+export * from './adminUserItemRole';
 export * from './authResponse';
 export * from './callItem';
 export * from './callItemStatus';
