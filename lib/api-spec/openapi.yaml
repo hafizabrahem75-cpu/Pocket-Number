@@ -20,6 +20,8 @@ tags:
     description: Personal contacts book
   - name: messages
     description: Direct messaging between users
+  - name: calls
+    description: Voice call foundation (metadata/history only — no audio/WebRTC yet)
 paths:
   # ---------------------------------------------------------------------------
   # Messages
@@ -233,6 +235,145 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: Cannot delete a message that has already been read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ---------------------------------------------------------------------------
+  # Calls
+  # ---------------------------------------------------------------------------
+
+  /calls:
+    post:
+      operationId: startCall
+      tags: [calls]
+      summary: Start a voice call
+      description: Creates a call record in "ringing" status. No audio/WebRTC signaling yet — metadata only.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartCallInput"
+      responses:
+        "201":
+          description: Call started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallItem"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Receiver not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /calls/history:
+    get:
+      operationId: getCallHistory
+      tags: [calls]
+      summary: Get paginated call history (as caller or receiver)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: before
+          required: false
+          schema:
+            type: integer
+          description: Cursor — return calls older than this call ID
+      responses:
+        "200":
+          description: Paginated call history, newest-first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calls:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CallItem"
+                  hasMore:
+                    type: boolean
+                  nextCursor:
+                    type: integer
+                    nullable: true
+                required:
+                  - calls
+                  - hasMore
+                  - nextCursor
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /calls/{id}/status:
+    patch:
+      operationId: updateCallStatus
+      tags: [calls]
+      summary: Advance call status (ringing → ongoing/missed/declined; ongoing → ended)
+      description: Only the caller or receiver of the call may update it.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Call ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCallStatusInput"
+      responses:
+        "200":
+          description: Updated call
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallItem"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Call not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Invalid status transition
           content:
             application/json:
               schema:
@@ -1086,6 +1227,55 @@ components:
           maxLength: 50
       required:
         - localName
+
+    # -------------------------------------------------------------------------
+    # Calls
+    # -------------------------------------------------------------------------
+
+    CallItem:
+      type: object
+      description: A single voice call record (metadata only — no audio/WebRTC yet)
+      properties:
+        id:
+          type: integer
+        callerId:
+          type: integer
+        receiverId:
+          type: integer
+        status:
+          type: string
+          enum: [ringing, ongoing, ended, missed, declined]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - callerId
+        - receiverId
+        - status
+        - startTime
+        - endTime
+
+    StartCallInput:
+      type: object
+      properties:
+        receiverId:
+          type: integer
+      required:
+        - receiverId
+
+    UpdateCallStatusInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ongoing, ended, missed, declined]
+      required:
+        - status
 
     # -------------------------------------------------------------------------
     # Messages
