@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   useStartCall,
   useUpdateCallStatus,
@@ -58,6 +58,17 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
   const { data: historyData } = useGetCallHistory(undefined, {
     query: { queryKey: getGetCallHistoryQueryKey(undefined), enabled: !!user, refetchInterval: 3000 },
   });
+
+  // Keep the caller's own view of activeCall.call in sync with the polled
+  // history so it reflects remote status changes (e.g. the receiver
+  // accepting/declining) — needed for WebRTC to know when to start.
+  useEffect(() => {
+    if (!activeCall) return;
+    const latest = historyData?.calls?.find((c) => c.id === activeCall.call.id);
+    if (latest && latest.status !== activeCall.call.status) {
+      setActiveCall((current) => (current ? { ...current, call: latest } : current));
+    }
+  }, [historyData, activeCall]);
 
   const incomingCall = useMemo<CallItem | null>(() => {
     if (!user) return null;

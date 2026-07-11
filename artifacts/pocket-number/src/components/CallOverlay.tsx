@@ -1,18 +1,42 @@
-import { PhoneOff, Phone } from "lucide-react";
+import { PhoneOff, Phone, MicOff } from "lucide-react";
 import { useCallLauncher } from "@/contexts/CallLauncherContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWebRTCCall } from "@/hooks/useWebRTCCall";
 
 /**
  * Full-screen overlay shown while a call is active (ringing/ongoing).
- * No WebRTC/audio — this only reflects call metadata state from the API.
+ * Once the call is "ongoing", this establishes the peer-to-peer WebRTC
+ * audio connection (mic capture + signaling); the call lifecycle/status
+ * itself is still owned entirely by CallLauncherContext + the REST API.
  */
 export function CallOverlay() {
   const { activeCall, endCall } = useCallLauncher();
+  const { user, token } = useAuth();
+
+  const { audioRef, state: audioState, micError, notifyHangup } = useWebRTCCall({
+    call: activeCall?.call ?? null,
+    peerId: activeCall?.peer.peerId ?? null,
+    myUserId: user?.id ?? null,
+    getToken: () => token,
+  });
 
   if (!activeCall) return null;
 
   const { peer, call } = activeCall;
   const letter = peer.peerName.trim()[0]?.toUpperCase() ?? "؟";
-  const statusLabel = call.status === "ongoing" ? "جارية الآن" : "جارٍ الاتصال…";
+  const statusLabel =
+    call.status === "ongoing"
+      ? audioState === "connected"
+        ? "جارية الآن"
+        : micError
+          ? "تعذّر الوصول إلى الميكروفون"
+          : "جارٍ توصيل الصوت…"
+      : "جارٍ الاتصال…";
+
+  const handleHangUp = () => {
+    notifyHangup();
+    endCall();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center bg-black/0">
@@ -32,14 +56,20 @@ export function CallOverlay() {
           {call.status === "ringing" && (
             <Phone className="w-6 h-6 text-white/60 animate-pulse" />
           )}
+          {call.status === "ongoing" && micError && (
+            <MicOff className="w-6 h-6 text-white/60" aria-label="تعذّر الوصول إلى الميكروفون" />
+          )}
           <button
-            onClick={endCall}
+            onClick={handleHangUp}
             aria-label="إنهاء الاتصال"
             className="w-16 h-16 rounded-full bg-destructive flex items-center justify-center shadow-lg active:scale-95 transition-transform"
           >
             <PhoneOff className="w-7 h-7 text-white" />
           </button>
         </div>
+
+        {/* Remote audio output — no visible UI, WebRTC audio only (no video). */}
+        <audio ref={audioRef} autoPlay className="hidden" />
       </div>
     </div>
   );
