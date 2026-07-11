@@ -343,6 +343,26 @@ export const SearchUsersResponse = zod.object({
 
 
 /**
+ * Used to resolve caller/receiver identity for call history entries.
+ * @summary Get public profile of a user by ID
+ */
+export const GetUserByIdParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetUserByIdResponse = zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string(),
+  "name": zod.string(),
+  "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
+  "friendshipStatus": zod.enum(['none', 'pending_sent', 'pending_received', 'accepted']).describe('Relationship of the current user to this user'),
+  "friendshipId": zod.number().optional().describe('ID of the friendship record if one exists')
+}).describe('Public-facing user info (no email)')
+
+
+/**
  * @summary Get friends list
  */
 export const GetFriendsResponseItem = zod.object({
