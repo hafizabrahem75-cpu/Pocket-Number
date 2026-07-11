@@ -1,3 +1,4 @@
 - [Orval codegen index duplication](orval-codegen-index.md) — codegen appends to index.ts; clean generated/ dirs before re-running to avoid duplicate exports
 - [Messaging system design](messaging-design.md) — Phase 3 backend complete; E2EE-ready schema, delivery state machine, cursor pagination
 - [Pocket Number admin settings](pocket-number-admin-settings.md) — country code/prefix stored in app_settings; tsc project refs need `tsc --build lib/db` after schema exports change
+- [Pocket Number artifact registration gap](pocket-number-artifact-registration.md) — createArtifact can't re-register pre-existing artifact dirs; used manual workflows as workaround after GitHub re-import
