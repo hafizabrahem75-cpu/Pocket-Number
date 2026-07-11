@@ -207,6 +207,41 @@ export interface UpdateCallStatusInput {
   status: UpdateCallStatusInputStatus;
 }
 
+export type DeviceItemPlatform = typeof DeviceItemPlatform[keyof typeof DeviceItemPlatform];
+
+
+export const DeviceItemPlatform = {
+  ios: 'ios',
+  android: 'android',
+  web: 'web',
+} as const;
+
+/**
+ * A registered device (push token linkage only — no notifications sent yet)
+ */
+export interface DeviceItem {
+  id: number;
+  userId: number;
+  platform: DeviceItemPlatform;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
+export type RegisterDeviceInputPlatform = typeof RegisterDeviceInputPlatform[keyof typeof RegisterDeviceInputPlatform];
+
+
+export const RegisterDeviceInputPlatform = {
+  ios: 'ios',
+  android: 'android',
+  web: 'web',
+} as const;
+
+export interface RegisterDeviceInput {
+  /** @minLength 1 */
+  token: string;
+  platform: RegisterDeviceInputPlatform;
+}
+
 /**
  * Delivery state machine: sent → delivered → read. Only the recipient may advance the state forward.
  */

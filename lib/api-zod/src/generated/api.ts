@@ -9,6 +9,38 @@ import * as zod from 'zod';
 
 
 /**
+ * Stores an opaque push token for this device. Re-registering an existing token reassigns it to the caller — no push provider (e.g. Firebase) is wired up yet, this only persists the linkage.
+ * @summary Register (or refresh) a device token for the current user
+ */
+
+
+
+export const RegisterDeviceBody = zod.object({
+  "token": zod.string().min(1),
+  "platform": zod.enum(['ios', 'android', 'web'])
+})
+
+export const RegisterDeviceResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "platform": zod.enum(['ios', 'android', 'web']),
+  "createdAt": zod.coerce.date(),
+  "lastSeenAt": zod.coerce.date()
+}).describe('A registered device (push token linkage only — no notifications sent yet)')
+
+
+/**
+ * Only removes the token if it belongs to the caller.
+ * @summary Unregister a device token (e.g. on logout)
+ */
+export const UnregisterDeviceParams = zod.object({
+  "token": zod.coerce.string().describe('The device push token to remove')
+})
+
+export const UnregisterDeviceResponse = zod.void()
+
+
+/**
  * @summary Send a direct message
  */
 export const sendMessageBodyContentMax = 10000;

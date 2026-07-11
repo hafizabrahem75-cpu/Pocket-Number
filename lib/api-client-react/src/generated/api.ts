@@ -24,6 +24,7 @@ import type {
   AuthResponse,
   CallItem,
   ContactItem,
+  DeviceItem,
   ErrorResponse,
   FriendEntry,
   FriendRequestItem,
@@ -38,6 +39,7 @@ import type {
   MessageResponse,
   PublicUser,
   Register201,
+  RegisterDeviceInput,
   RegisterInput,
   ResendOtp200,
   ResendOtpInput,
@@ -78,6 +80,150 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getRegisterDeviceUrl = () => {
+
+
+
+
+  return `/api/devices`
+}
+
+/**
+ * Stores an opaque push token for this device. Re-registering an existing token reassigns it to the caller — no push provider (e.g. Firebase) is wired up yet, this only persists the linkage.
+ * @summary Register (or refresh) a device token for the current user
+ */
+export const registerDevice = async (registerDeviceInput: RegisterDeviceInput, options?: RequestInit): Promise<DeviceItem> => {
+
+  return customFetch<DeviceItem>(getRegisterDeviceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(registerDeviceInput)
+  }
+);}
+
+
+
+
+
+export const getRegisterDeviceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerDevice>>, TError,{data: BodyType<RegisterDeviceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerDevice>>, TError,{data: BodyType<RegisterDeviceInput>}, TContext> => {
+
+const mutationKey = ['registerDevice'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerDevice>>, {data: BodyType<RegisterDeviceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerDevice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof registerDevice>>>
+    export type RegisterDeviceMutationBody = BodyType<RegisterDeviceInput>
+    export type RegisterDeviceMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Register (or refresh) a device token for the current user
+ */
+export const useRegisterDevice = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerDevice>>, TError,{data: BodyType<RegisterDeviceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerDevice>>,
+        TError,
+        {data: BodyType<RegisterDeviceInput>},
+        TContext
+      > => {
+      return useMutation(getRegisterDeviceMutationOptions(options));
+    }
+
+export const getUnregisterDeviceUrl = (token: string,) => {
+
+
+
+
+  return `/api/devices/${token}`
+}
+
+/**
+ * Only removes the token if it belongs to the caller.
+ * @summary Unregister a device token (e.g. on logout)
+ */
+export const unregisterDevice = async (token: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUnregisterDeviceUrl(token),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnregisterDeviceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterDevice>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unregisterDevice>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['unregisterDevice'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unregisterDevice>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  unregisterDevice(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnregisterDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof unregisterDevice>>>
+
+    export type UnregisterDeviceMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Unregister a device token (e.g. on logout)
+ */
+export const useUnregisterDevice = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterDevice>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unregisterDevice>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getUnregisterDeviceMutationOptions(options));
+    }
 
 export const getSendMessageUrl = () => {
 

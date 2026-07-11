@@ -22,7 +22,75 @@ tags:
     description: Direct messaging between users
   - name: calls
     description: Voice call foundation (metadata/history only — no audio/WebRTC yet)
+  - name: devices
+    description: Notification foundation — device token registration only, no push provider yet
 paths:
+  # ---------------------------------------------------------------------------
+  # Devices (notification foundation — no push provider yet)
+  # ---------------------------------------------------------------------------
+
+  /devices:
+    post:
+      operationId: registerDevice
+      tags: [devices]
+      summary: Register (or refresh) a device token for the current user
+      description: >
+        Stores an opaque push token for this device. Re-registering an
+        existing token reassigns it to the caller — no push provider
+        (e.g. Firebase) is wired up yet, this only persists the linkage.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDeviceInput"
+      responses:
+        "201":
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceItem"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /devices/{token}:
+    delete:
+      operationId: unregisterDevice
+      tags: [devices]
+      summary: Unregister a device token (e.g. on logout)
+      description: Only removes the token if it belongs to the caller.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+          description: The device push token to remove
+      responses:
+        "204":
+          description: Device unregistered (or was not found — idempotent)
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ---------------------------------------------------------------------------
   # Messages
   # ---------------------------------------------------------------------------
@@ -1310,6 +1378,47 @@ components:
           enum: [ongoing, ended, missed, declined]
       required:
         - status
+
+    # -------------------------------------------------------------------------
+    # Devices (notification foundation — no push provider yet)
+    # -------------------------------------------------------------------------
+
+    DeviceItem:
+      type: object
+      description: A registered device (push token linkage only — no notifications sent yet)
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        platform:
+          type: string
+          enum: [ios, android, web]
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - platform
+        - createdAt
+        - lastSeenAt
+
+    RegisterDeviceInput:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+        platform:
+          type: string
+          enum: [ios, android, web]
+      required:
+        - token
+        - platform
 
     # -------------------------------------------------------------------------
     # Messages
