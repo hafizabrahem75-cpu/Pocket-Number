@@ -3,9 +3,15 @@ import { MobileLayout } from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatLauncher } from "@/contexts/ChatLauncherContext";
 import { useLocation } from "wouter";
-import { Phone, MessageCircle, Users, Clock, Settings, Search } from "lucide-react";
+import { Phone, MessageCircle, Users, Clock, Search, MoreVertical, User, Settings } from "lucide-react";
 import { useHeartbeatPing } from "@/hooks/useHeartbeatPing";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import ContactsTab from "./ContactsTab";
 import CallsTab from "./CallsTab";
 import MessagesTab from "./MessagesTab";
@@ -58,7 +64,9 @@ export default function HomeShell() {
           <p className="text-xs text-muted-foreground font-medium">مرحباً،</p>
           <p className="text-base font-bold text-foreground leading-tight">{user?.name ?? "—"}</p>
         </div>
+
         <div className="flex items-center gap-2">
+          {/* Search */}
           <button
             onClick={() => setLocation("/search")}
             className="w-9 h-9 rounded-full bg-secondary/60 hover:bg-secondary flex items-center justify-center transition-colors"
@@ -66,6 +74,8 @@ export default function HomeShell() {
           >
             <Search className="w-4 h-4 text-secondary-foreground" />
           </button>
+
+          {/* Pocket number badge → profile */}
           <button
             onClick={() => setLocation("/profile")}
             className="flex flex-col items-end gap-0.5"
@@ -79,13 +89,28 @@ export default function HomeShell() {
               {user?.pocketNumber ?? "—"}
             </span>
           </button>
-          <button
-            onClick={() => setLocation("/settings")}
-            className="w-9 h-9 rounded-full bg-secondary/60 hover:bg-secondary flex items-center justify-center transition-colors"
-            aria-label="الإعدادات"
-          >
-            <Settings className="w-4 h-4 text-secondary-foreground" />
-          </button>
+
+          {/* Three-dot menu — secondary navigation */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-9 h-9 rounded-full bg-secondary/60 hover:bg-secondary flex items-center justify-center transition-colors"
+                aria-label="المزيد"
+              >
+                <MoreVertical className="w-4 h-4 text-secondary-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[160px]">
+              <DropdownMenuItem onClick={() => setLocation("/profile")}>
+                <User className="w-4 h-4 ml-2 text-muted-foreground" />
+                الملف الشخصي
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLocation("/settings")}>
+                <Settings className="w-4 h-4 ml-2 text-muted-foreground" />
+                الإعدادات
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

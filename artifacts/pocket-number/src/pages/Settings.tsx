@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
-import { useLogout } from "@workspace/api-client-react";
+import { useLogout, useGetMe } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -18,6 +19,8 @@ import {
   X,
   Languages,
   Moon,
+  Info,
+  Smartphone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,10 +30,12 @@ const DEVELOPER_PHONE = "+967717245252";
 
 type Copy = {
   title: string;
+  profile: string;
   developerInfo: string;
   developerName: string;
   developerHint: string;
   appSettings: string;
+  aboutApp: string;
   language: string;
   languageValue: string;
   theme: string;
@@ -42,15 +47,20 @@ type Copy = {
   sms: string;
   close: string;
   contactTitle: string;
+  pocketNumber: string;
+  email: string;
+  name: string;
 };
 
 const copy: Record<"ar" | "en", Copy> = {
   ar: {
     title: "الإعدادات",
-    developerInfo: "معلومات المطور",
+    profile: "الحساب",
+    developerInfo: "المطور",
     developerName: "حافظ السراء",
     developerHint: "اضغط للتواصل",
     appSettings: "إعدادات التطبيق",
+    aboutApp: "حول التطبيق",
     language: "اللغة",
     languageValue: "العربية",
     theme: "المظهر الليلي",
@@ -62,13 +72,18 @@ const copy: Record<"ar" | "en", Copy> = {
     sms: "رسالة نصية",
     close: "إغلاق",
     contactTitle: "التواصل مع المطور",
+    pocketNumber: "رقم الجيب",
+    email: "البريد الإلكتروني",
+    name: "الاسم",
   },
   en: {
     title: "Settings",
-    developerInfo: "Developer Info",
+    profile: "Account",
+    developerInfo: "Developer",
     developerName: "حافظ السراء",
     developerHint: "Tap to contact",
     appSettings: "App Settings",
+    aboutApp: "About",
     language: "Language",
     languageValue: "English",
     theme: "Dark Mode",
@@ -80,27 +95,18 @@ const copy: Record<"ar" | "en", Copy> = {
     sms: "SMS",
     close: "Close",
     contactTitle: "Contact Developer",
+    pocketNumber: "Pocket Number",
+    email: "Email",
+    name: "Name",
   },
 } as const;
 
 function DeveloperContactSheet({ onClose, t }: { onClose: () => void; t: Copy }) {
   const waNumber = DEVELOPER_PHONE.replace(/[^\d]/g, "");
   const actions = [
-    {
-      label: t.call,
-      icon: Phone,
-      href: `tel:${DEVELOPER_PHONE}`,
-    },
-    {
-      label: t.whatsapp,
-      icon: MessageCircle,
-      href: `https://wa.me/${waNumber}`,
-    },
-    {
-      label: t.sms,
-      icon: MessageSquareText,
-      href: `sms:${DEVELOPER_PHONE}`,
-    },
+    { label: t.call, icon: Phone, href: `tel:${DEVELOPER_PHONE}` },
+    { label: t.whatsapp, icon: MessageCircle, href: `https://wa.me/${waNumber}` },
+    { label: t.sms, icon: MessageSquareText, href: `sms:${DEVELOPER_PHONE}` },
   ];
 
   return (
@@ -137,35 +143,81 @@ function DeveloperContactSheet({ onClose, t }: { onClose: () => void; t: Copy })
 export default function Settings() {
   const { logout } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const logoutMutation = useLogout();
   const { theme, language, setTheme, setLanguage } = useAppSettings();
   const [showDeveloperContact, setShowDeveloperContact] = useState(false);
+  const { data: me } = useGetMe();
 
   const t = copy[language];
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onSettled: () => {
-        logout(); // Logout from context which redirects to /login
+        // Clear all cached query data so the next user session starts clean —
+        // prevents contacts and other user-specific data from leaking across accounts.
+        queryClient.clear();
+        logout();
         toast({
           title: language === "ar" ? "تم تسجيل الخروج" : "Logged out",
           description: language === "ar" ? "نراك قريباً" : "See you soon",
         });
-      }
+      },
     });
   };
 
   return (
     <MobileLayout>
       <div className="flex-1 flex flex-col bg-gray-50 dark:bg-background">
+        {/* Header — back goes to /home so the path is consistent regardless of entry point */}
         <header className="px-6 pt-12 pb-4 bg-background border-b sticky top-0 z-10 flex items-center shadow-sm">
-          <Link href="/profile" className="mr-4 text-muted-foreground hover:text-foreground">
+          <Link href="/home" className="ml-4 text-muted-foreground hover:text-foreground">
             <ArrowRight className="w-6 h-6" />
           </Link>
           <h1 className="text-xl font-bold flex-1">{t.title}</h1>
         </header>
 
         <div className="p-6 space-y-6">
+
+          {/* Account / Profile summary */}
+          {me && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                {t.profile}
+              </p>
+              <div className="bg-background rounded-2xl shadow-sm border overflow-hidden">
+                {/* Avatar + name row */}
+                <div className="p-4 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary font-black text-xl flex items-center justify-center shrink-0">
+                    {me.name.trim()[0]?.toUpperCase() ?? "؟"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-base leading-tight truncate">{me.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate" dir="ltr">
+                      {me.email}
+                    </p>
+                  </div>
+                  <Link href="/profile">
+                    <ChevronLeft className="w-5 h-5 text-muted-foreground" />
+                  </Link>
+                </div>
+
+                {/* Pocket number */}
+                <div className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t.pocketNumber}</div>
+                    <div className="font-bold font-mono tracking-wider text-sm" dir="ltr">
+                      {me.pocketNumber}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* App Settings */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
@@ -205,32 +257,47 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Developer Info */}
+          {/* About — version + developer */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-              {t.developerInfo}
+              {t.aboutApp}
             </p>
-            <div
-              className="bg-background rounded-2xl shadow-sm border overflow-hidden p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-              onClick={() => setShowDeveloperContact(true)}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Code2 className="w-5 h-5" />
+            <div className="bg-background rounded-2xl shadow-sm border overflow-hidden">
+              {/* Version */}
+              <div className="p-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-800">
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <Info className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <div className="font-bold">{t.developerName}</div>
-                  <div className="text-xs text-muted-foreground">{t.developerHint}</div>
+                  <div className="font-bold">Pocket Number</div>
+                  <div className="text-xs text-muted-foreground">{t.version}</div>
                 </div>
               </div>
-              <ChevronLeft className="w-5 h-5 text-muted-foreground" />
+
+              {/* Developer */}
+              <div
+                className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+                onClick={() => setShowDeveloperContact(true)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Code2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold">{t.developerName}</div>
+                    <div className="text-xs text-muted-foreground">{t.developerHint}</div>
+                  </div>
+                </div>
+                <ChevronLeft className="w-5 h-5 text-muted-foreground" />
+              </div>
             </div>
           </div>
 
-          <Button 
-            variant="destructive" 
-            size="lg" 
-            className="w-full text-lg shadow-sm" 
+          {/* Logout */}
+          <Button
+            variant="destructive"
+            size="lg"
+            className="w-full text-lg shadow-sm"
             onClick={handleLogout}
             disabled={logoutMutation.isPending}
           >
@@ -243,10 +310,6 @@ export default function Settings() {
               </>
             )}
           </Button>
-          
-          <p className="text-center text-sm text-muted-foreground pt-8">
-            {t.version}
-          </p>
         </div>
       </div>
 
