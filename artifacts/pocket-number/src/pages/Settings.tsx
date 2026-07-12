@@ -10,7 +10,6 @@ import {
   ArrowRight,
   LogOut,
   Loader2,
-  ChevronLeft,
   Code2,
   Phone,
   MessageCircle,
@@ -27,9 +26,6 @@ const DEVELOPER_PHONE = "+967717245252";
 
 type Copy = {
   title: string;
-  help: string;
-  terms: string;
-  privacy: string;
   developerInfo: string;
   developerName: string;
   developerHint: string;
@@ -50,9 +46,6 @@ type Copy = {
 const copy: Record<"ar" | "en", Copy> = {
   ar: {
     title: "الإعدادات",
-    help: "المساعدة والدعم",
-    terms: "الشروط والأحكام",
-    privacy: "سياسة الخصوصية",
     developerInfo: "معلومات المطور",
     developerName: "حافظ السراء",
     developerHint: "اضغط للتواصل",
@@ -71,9 +64,6 @@ const copy: Record<"ar" | "en", Copy> = {
   },
   en: {
     title: "Settings",
-    help: "Help & Support",
-    terms: "Terms & Conditions",
-    privacy: "Privacy Policy",
     developerInfo: "Developer Info",
     developerName: "حافظ السراء",
     developerHint: "Tap to contact",
@@ -175,21 +165,6 @@ export default function Settings() {
         </header>
 
         <div className="p-6 space-y-6">
-          <div className="bg-background rounded-2xl shadow-sm border overflow-hidden">
-            <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-              <div className="font-bold">{t.help}</div>
-              <ChevronLeft className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-              <div className="font-bold">{t.terms}</div>
-              <ChevronLeft className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-              <div className="font-bold">{t.privacy}</div>
-              <ChevronLeft className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </div>
-
           {/* App Settings */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">

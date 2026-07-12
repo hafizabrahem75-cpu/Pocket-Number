@@ -17,6 +17,7 @@ import {
 import { signToken } from "../lib/jwt";
 import { generateOtpCode, getOtpExpiry, sendOtpEmail } from "../lib/otp";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { authRateLimit } from "../middlewares/rateLimit";
 import { getPocketNumberConfig } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -70,7 +71,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
 
 // ── POST /auth/register ───────────────────────────────────────────────────────
 
-router.post("/auth/register", async (req, res): Promise<void> => {
+router.post("/auth/register", authRateLimit, async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -124,7 +125,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
 // ── POST /auth/verify-otp ────────────────────────────────────────────────────
 
-router.post("/auth/verify-otp", async (req, res): Promise<void> => {
+router.post("/auth/verify-otp", authRateLimit, async (req, res): Promise<void> => {
   const parsed = VerifyOtpBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -178,7 +179,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
 
 // ── POST /auth/resend-otp ────────────────────────────────────────────────────
 
-router.post("/auth/resend-otp", async (req, res): Promise<void> => {
+router.post("/auth/resend-otp", authRateLimit, async (req, res): Promise<void> => {
   const parsed = ResendOtpBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -225,7 +226,7 @@ router.post("/auth/resend-otp", async (req, res): Promise<void> => {
 
 // ── POST /auth/login ─────────────────────────────────────────────────────────
 
-router.post("/auth/login", async (req, res): Promise<void> => {
+router.post("/auth/login", authRateLimit, async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

@@ -10,16 +10,14 @@ import ContactsTab from "./ContactsTab";
 import CallsTab from "./CallsTab";
 import MessagesTab from "./MessagesTab";
 import HistoryTab from "./HistoryTab";
-import SettingsTab from "./SettingsTab";
 
-type Tab = "calls" | "messages" | "contacts" | "history" | "settings";
+type Tab = "calls" | "messages" | "contacts" | "history";
 
 const tabs: { id: Tab; label: string; icon: typeof Phone }[] = [
   { id: "calls", label: "المكالمات", icon: Phone },
   { id: "messages", label: "الرسائل", icon: MessageCircle },
   { id: "contacts", label: "جهات الاتصال", icon: Users },
   { id: "history", label: "السجل", icon: Clock },
-  { id: "settings", label: "الإعدادات", icon: Settings },
 ];
 
 export default function HomeShell() {
@@ -49,8 +47,6 @@ export default function HomeShell() {
         return <ContactsTab />;
       case "history":
         return <HistoryTab />;
-      case "settings":
-        return <SettingsTab />;
     }
   };
 
@@ -82,6 +78,13 @@ export default function HomeShell() {
             >
               {user?.pocketNumber ?? "—"}
             </span>
+          </button>
+          <button
+            onClick={() => setLocation("/settings")}
+            className="w-9 h-9 rounded-full bg-secondary/60 hover:bg-secondary flex items-center justify-center transition-colors"
+            aria-label="الإعدادات"
+          >
+            <Settings className="w-4 h-4 text-secondary-foreground" />
           </button>
         </div>
       </div>
