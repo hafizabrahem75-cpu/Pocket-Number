@@ -8,6 +8,7 @@ import { useLogout } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import {
   ArrowRight,
+  ChevronLeft,
   LogOut,
   Loader2,
   Code2,
