@@ -96,6 +96,29 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface UpdateMeInput {
+  /**
+     * @minLength 2
+     * @maxLength 50
+     */
+  name: string;
+}
+
+export interface ChangePasswordInput {
+  /** @minLength 1 */
+  currentPassword: string;
+  /**
+     * @minLength 8
+     * @maxLength 100
+     */
+  newPassword: string;
+}
+
+export interface DeleteMeInput {
+  /** @minLength 1 */
+  password: string;
+}
+
 export interface RegisterInput {
   /**
      * @minLength 2

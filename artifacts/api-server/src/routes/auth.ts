@@ -13,6 +13,9 @@ import {
   ResendOtpResponse,
   LoginResponse,
   LogoutResponse,
+  UpdateMeBody,
+  ChangePasswordBody,
+  DeleteMeBody,
 } from "@workspace/api-zod";
 import { signToken } from "../lib/jwt";
 import { generateOtpCode, getOtpExpiry, sendOtpEmail } from "../lib/otp";
@@ -300,6 +303,102 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void>
   }
 
   res.json(GetMeResponse.parse(serializeUser(user)));
+});
+
+// ── PATCH /auth/me — update display name ─────────────────────────────────────
+
+router.patch("/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const parsed = UpdateMeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { name } = parsed.data;
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({ name: name.trim() })
+    .where(eq(usersTable.id, req.userId!))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+
+  req.log.info({ userId: req.userId }, "User updated name");
+  res.json(serializeUser(updated));
+});
+
+// ── PATCH /auth/password — change password ────────────────────────────────────
+
+router.patch("/auth/password", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const parsed = ChangePasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { currentPassword, newPassword } = parsed.data;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, req.userId!));
+
+  if (!user) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+
+  const match = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!match) {
+    res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 12);
+  await db
+    .update(usersTable)
+    .set({ passwordHash: newHash })
+    .where(eq(usersTable.id, req.userId!));
+
+  req.log.info({ userId: req.userId }, "User changed password");
+  res.json({ message: "تم تغيير كلمة المرور بنجاح" });
+});
+
+// ── DELETE /auth/me — delete account ─────────────────────────────────────────
+
+router.delete("/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const parsed = DeleteMeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { password } = parsed.data;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, req.userId!));
+
+  if (!user) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+
+  const match = await bcrypt.compare(password, user.passwordHash);
+  if (!match) {
+    res.status(400).json({ error: "كلمة المرور غير صحيحة" });
+    return;
+  }
+
+  await db.delete(usersTable).where(eq(usersTable.id, req.userId!));
+
+  req.log.info({ userId: req.userId }, "User deleted account");
+  res.json({ message: "تم حذف الحساب بنجاح" });
 });
 
 export default router;

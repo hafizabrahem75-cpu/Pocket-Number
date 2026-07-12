@@ -1,8 +1,9 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, useUpdateMe } from "@workspace/api-client-react";
 import {
   Settings,
   Copy,
@@ -14,17 +15,29 @@ import {
   Smartphone,
   Wifi,
   WifiOff,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatLastSeen } from "@/lib/formatLastSeen";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Profile() {
-  const { user: initialUser } = useAuth();
+  const { user: initialUser, login, token } = useAuth();
   const { data: user, isLoading } = useGetMe();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const displayUser = user || initialUser;
   const [copied, setCopied] = useState(false);
+
+  // Edit-name state
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const updateMeMutation = useUpdateMe();
 
   useEffect(() => {
     if (copied) {
@@ -39,6 +52,41 @@ export default function Profile() {
       navigator.clipboard.writeText(displayUser.pocketNumber);
       setCopied(true);
     }
+  };
+
+  const startEditing = () => {
+    setNameValue(displayUser?.name ?? "");
+    setEditingName(true);
+  };
+
+  const cancelEditing = () => {
+    setEditingName(false);
+    setNameValue("");
+  };
+
+  const saveName = () => {
+    const trimmed = nameValue.trim();
+    if (!trimmed || trimmed.length < 2) {
+      toast({ title: "الاسم قصير جداً", description: "يجب أن يتكون الاسم من حرفين على الأقل", variant: "destructive" });
+      return;
+    }
+    updateMeMutation.mutate(
+      { data: { name: trimmed } },
+      {
+        onSuccess: (updated) => {
+          // Refresh server query cache
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          // Keep localStorage user in sync so header greeting updates immediately
+          if (token) login(token, updated);
+          setEditingName(false);
+          toast({ title: "تم تحديث الاسم" });
+        },
+        onError: (err: unknown) => {
+          const msg = (err as { error?: string })?.error ?? "فشل تحديث الاسم";
+          toast({ title: "خطأ", description: msg, variant: "destructive" });
+        },
+      },
+    );
   };
 
   const formatDate = (dateString: string) =>
@@ -106,20 +154,70 @@ export default function Profile() {
 
             {/* User Details */}
             <div className="bg-background rounded-3xl p-1 shadow-sm border">
-              {/* Name */}
+              {/* Name — editable */}
               <div className="p-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground shrink-0">
                   <UserIcon className="w-6 h-6" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm text-muted-foreground mb-1">الاسم الكامل</p>
-                  <p className="font-bold text-lg leading-none">{displayUser.name}</p>
+                  {editingName ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={nameValue}
+                        onChange={(e) => setNameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveName();
+                          if (e.key === "Escape") cancelEditing();
+                        }}
+                        className="h-8 text-base font-bold px-2"
+                        autoFocus
+                        maxLength={50}
+                        dir="auto"
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 shrink-0"
+                        onClick={saveName}
+                        disabled={updateMeMutation.isPending}
+                      >
+                        {updateMeMutation.isPending ? (
+                          <span className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                        onClick={cancelEditing}
+                        disabled={updateMeMutation.isPending}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-lg leading-none">{displayUser.name}</p>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={startEditing}
+                        aria-label="تعديل الاسم"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Email */}
               <div className="p-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect width="20" height="16" x="2" y="4" rx="2" />
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
@@ -137,7 +235,7 @@ export default function Profile() {
               <div className="p-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800">
                 <div
                   className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center",
+                    "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
                     displayUser.isOnline
                       ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                       : "bg-gray-100 text-gray-500 dark:bg-gray-800",
@@ -174,7 +272,7 @@ export default function Profile() {
               <div className="p-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800">
                 <div
                   className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center",
+                    "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
                     displayUser.isVerified
                       ? "bg-green-100 text-green-600 dark:bg-green-900/30"
                       : "bg-red-100 text-red-600 dark:bg-red-900/30",
@@ -203,7 +301,7 @@ export default function Profile() {
 
               {/* Joined */}
               <div className="p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground shrink-0">
                   <Calendar className="w-6 h-6" />
                 </div>
                 <div className="flex-1">

@@ -435,6 +435,65 @@ export const GetMeResponse = zod.object({
 
 
 /**
+ * @summary Update display name
+ */
+export const updateMeBodyNameMin = 2;
+export const updateMeBodyNameMax = 50;
+
+
+
+export const UpdateMeBody = zod.object({
+  "name": zod.string().min(updateMeBodyNameMin).max(updateMeBodyNameMax)
+})
+
+export const UpdateMeResponse = zod.object({
+  "id": zod.number(),
+  "pocketNumber": zod.string().describe('9-digit unique number with prefix 71\/73\/77\/700 (e.g. 713456789)'),
+  "name": zod.string(),
+  "email": zod.string(),
+  "isVerified": zod.boolean(),
+  "isOnline": zod.boolean().describe('Whether the user is currently online'),
+  "lastSeenAt": zod.coerce.date().nullable().describe('Timestamp of the user\'s last activity'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Requires the user's current password as confirmation. All user data is removed immediately and the action is irreversible.
+ * @summary Permanently delete the authenticated user's account
+ */
+
+
+
+export const DeleteMeBody = zod.object({
+  "password": zod.string().min(1)
+})
+
+export const DeleteMeResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Change the authenticated user's password
+ */
+
+export const changePasswordBodyNewPasswordMin = 8;
+export const changePasswordBodyNewPasswordMax = 100;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string().min(1),
+  "newPassword": zod.string().min(changePasswordBodyNewPasswordMin).max(changePasswordBodyNewPasswordMax)
+})
+
+export const ChangePasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Keep-alive heartbeat — marks the caller as online
  */
 export const HeartbeatResponse = zod.object({
