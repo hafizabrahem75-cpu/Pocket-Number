@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, or, desc, lt } from "drizzle-orm";
 import { db, usersTable, callsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { notifyIncomingCall } from "../lib/notificationEvents";
 
 const router: IRouter = Router();
 
@@ -61,6 +62,12 @@ router.post("/calls", requireAuth, async (req: AuthRequest, res): Promise<void> 
       status: "ringing",
     })
     .returning();
+
+  void notifyIncomingCall({
+    callId: call.id,
+    callerId,
+    receiverId: parsedReceiverId,
+  });
 
   res.status(201).json(serializeCall(call));
 });

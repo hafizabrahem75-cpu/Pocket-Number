@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, or, desc, lt, gt, sql, inArray } from "drizzle-orm";
 import { db, usersTable, messagesTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { notifyNewMessage } from "../lib/notificationEvents";
 
 const router: IRouter = Router();
 
@@ -67,6 +68,12 @@ router.post("/messages", requireAuth, async (req: AuthRequest, res): Promise<voi
       status: "sent",
     })
     .returning();
+
+  void notifyNewMessage({
+    recipientId: parsedRecipientId,
+    senderId,
+    content: message.content,
+  });
 
   res.status(201).json(serializeMessage(message));
 });
