@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import {
   useSearchUsers,
   useAddContact,
+  useGetContacts,
   getGetContactsQueryKey,
   getSearchUsersQueryKey,
 } from "@workspace/api-client-react";
@@ -60,12 +61,21 @@ function ResultCard({ user }: { user: PublicUser }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const addContact = useAddContact();
+  const { data: contacts } = useGetContacts();
   const { requestChat } = useChatLauncher();
   const { startCall, isStarting } = useCallLauncher();
   const [, setLocation] = useLocation();
 
   const isSelf = me && user.id === me.id;
-  const [added, setAdded] = useState(false);
+
+  // Optimistic flag for the instant within the same session before the cache
+  // re-fetch settles. The server-derived check below takes over once contacts load.
+  const [localAdded, setLocalAdded] = useState(false);
+
+  // Derive from the live contacts cache so navigating away and back still
+  // shows the correct "already in contacts" state.
+  const isAlreadyAdded =
+    (contacts?.some((c) => c.pocketNumber === user.pocketNumber) ?? false) || localAdded;
 
   const handleMessage = () => {
     requestChat({ peerId: user.id, peerName: user.name, peerPocketNumber: user.pocketNumber });
@@ -90,7 +100,8 @@ function ResultCard({ user }: { user: PublicUser }) {
       { data: { phoneNumber: user.pocketNumber } },
       {
         onSuccess: () => {
-          setAdded(true);
+          // Optimistic flag covers the brief window before the cache re-fetches
+          setLocalAdded(true);
           queryClient.invalidateQueries({ queryKey: getGetContactsQueryKey() });
           queryClient.invalidateQueries({
             queryKey: getSearchUsersQueryKey({ q: user.pocketNumber }),
@@ -189,10 +200,10 @@ function ResultCard({ user }: { user: PublicUser }) {
               إرسال رسالة
             </Button>
 
-            {added ? (
+            {isAlreadyAdded ? (
               <div className="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 py-1">
                 <CheckCircle2 className="w-5 h-5" />
-                تمت الإضافة إلى جهات الاتصال
+                موجود في جهات الاتصال
               </div>
             ) : (
               <Button

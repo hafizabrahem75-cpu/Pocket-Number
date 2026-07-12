@@ -23,6 +23,7 @@ import {
   ChevronRight,
   MessageCircle,
   Phone,
+  PhoneOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -316,45 +317,74 @@ function ContactRow({
 
       {/* Expanded actions */}
       {expanded && (
-        <div className="flex gap-2 px-4 pb-3 animate-in fade-in slide-in-from-top-1 duration-150">
-          <button
-            onClick={handleCall}
-            disabled={calling}
-            className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-600/8 hover:bg-emerald-600/15 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {calling ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Phone className="w-3.5 h-3.5" />
-            )}
-            اتصال
-          </button>
-          <button
-            onClick={handleMessage}
-            disabled={messaging}
-            className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/8 hover:bg-primary/15 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {messaging ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <MessageCircle className="w-3.5 h-3.5" />
-            )}
-            رسالة
-          </button>
-          <button
-            onClick={() => { setExpanded(false); onEdit(); }}
-            className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/8 hover:bg-primary/15 px-3 py-2 rounded-lg transition-colors"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            تعديل الاسم
-          </button>
-          <button
-            onClick={() => { setExpanded(false); onDelete(); }}
-            className="flex items-center gap-1.5 text-xs font-semibold text-destructive bg-destructive/8 hover:bg-destructive/15 px-3 py-2 rounded-lg transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            حذف
-          </button>
+        <div className="px-4 pb-3 animate-in fade-in slide-in-from-top-1 duration-150 space-y-2">
+          {contact.isLinked ? (
+            /* Registered user — show communication actions */
+            <div className="flex gap-2">
+              <button
+                onClick={handleCall}
+                disabled={calling}
+                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-600/8 hover:bg-emerald-600/15 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {calling ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Phone className="w-3.5 h-3.5" />
+                )}
+                اتصال
+              </button>
+              <button
+                onClick={handleMessage}
+                disabled={messaging}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/8 hover:bg-primary/15 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {messaging ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <MessageCircle className="w-3.5 h-3.5" />
+                )}
+                رسالة
+              </button>
+              <button
+                onClick={() => { setExpanded(false); onEdit(); }}
+                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted/60 hover:bg-muted px-3 py-2 rounded-lg transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                تعديل
+              </button>
+              <button
+                onClick={() => { setExpanded(false); onDelete(); }}
+                className="flex items-center gap-1.5 text-xs font-semibold text-destructive bg-destructive/8 hover:bg-destructive/15 px-3 py-2 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                حذف
+              </button>
+            </div>
+          ) : (
+            /* Unregistered number — communication not possible */
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+                <PhoneOff className="w-3.5 h-3.5 shrink-0" />
+                <span>هذا الرقم غير مسجل في تطبيق Pocket Number</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setExpanded(false); onEdit(); }}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted/60 hover:bg-muted px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  تعديل الاسم
+                </button>
+                <button
+                  onClick={() => { setExpanded(false); onDelete(); }}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-destructive bg-destructive/8 hover:bg-destructive/15 px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  حذف
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -483,8 +513,20 @@ export default function ContactsTab() {
       {/* List */}
       <div className="flex-1 overflow-y-auto pb-24">
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-7 h-7 animate-spin text-muted-foreground" />
+          /* Skeleton rows — match the real row height so no layout shift */
+          <div className="animate-pulse">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0"
+              >
+                <div className="w-11 h-11 rounded-full bg-muted shrink-0" />
+                <div className="flex-1 space-y-2 py-0.5">
+                  <div className="h-3.5 bg-muted rounded-full w-2/5" />
+                  <div className="h-3 bg-muted rounded-full w-1/3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : !contacts?.length ? (
           /* Empty state */
@@ -492,23 +534,30 @@ export default function ContactsTab() {
             <div className="w-20 h-20 rounded-3xl bg-primary/8 flex items-center justify-center mb-5">
               <Users className="w-10 h-10 text-primary/60" />
             </div>
-            <p className="font-bold text-foreground text-base mb-2">لا توجد جهات اتصال</p>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
-              أضف أي رقم هاتف وامنحه اسماً خاصاً لا يراه أحد غيرك — وسيتم ربطه تلقائياً إذا كان مسجلاً في التطبيق
+            <p className="font-bold text-foreground text-base mb-2">لا توجد جهات اتصال بعد</p>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-[240px]">
+              أضف أي رقم هاتف وامنحه اسماً خاصاً لا يراه أحد غيرك
             </p>
             <Button
               className="mt-6 rounded-xl px-6 h-11 font-semibold"
               onClick={() => setShowAdd(true)}
             >
               <UserPlus className="w-4 h-4 ml-2" />
-              إضافة أول جهة
+              إضافة جهة اتصال
             </Button>
           </div>
         ) : search && !filtered.length ? (
           /* No search results */
-          <div className="flex flex-col items-center justify-center py-16 text-center px-8">
-            <p className="font-semibold text-foreground mb-1">لا نتائج</p>
-            <p className="text-sm text-muted-foreground">لم يُعثر على "{search}" في جهات الاتصال</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center px-8 gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+              <Search className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground mb-1">لا توجد نتائج</p>
+              <p className="text-sm text-muted-foreground">
+                لم يُعثر على <span className="font-mono font-bold">"{search}"</span> في جهات الاتصال
+              </p>
+            </div>
           </div>
         ) : (
           /* Grouped list */
