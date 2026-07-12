@@ -45,8 +45,11 @@ export const contactsTable = pgTable(
       .references(() => usersTable.id, { onDelete: "cascade" }),
     // Nullable — set only when the phone number belongs to a registered user.
     // Auto-linked at add-time, and retroactively when that number registers later.
+    // SET NULL on delete: if the linked user deletes their account the contact
+    // entry is preserved in the owner's book (they saved the number; they keep
+    // it) and simply becomes an unlinked / unregistered contact.
     contactUserId: integer("contact_user_id").references(() => usersTable.id, {
-      onDelete: "cascade",
+      onDelete: "set null",
     }),
     // Canonical normalized phone number (e.g. "+967 76XXXXXXX"), kept even
     // when the contact isn't a registered user yet — this is what lets a

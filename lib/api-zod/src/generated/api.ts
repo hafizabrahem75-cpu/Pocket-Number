@@ -701,6 +701,7 @@ export const GetContactsResponseItem = zod.object({
   "id": zod.number(),
   "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
   "pocketNumber": zod.string().describe('The contact\'s phone number in canonical form (e.g. \"+967 76XXXXXXX\"). Shown whether or not the number belongs to a registered Pocket Number user.'),
+  "isLinked": zod.boolean().describe('True when this number belongs to a registered Pocket Number account. Only linked contacts can be messaged or called inside the app.'),
   "isVerified": zod.boolean().describe('True only when this number is linked to a registered, verified Pocket Number account.'),
   "createdAt": zod.coerce.date()
 }).describe('A single entry in the caller\'s personal contacts book')
@@ -724,6 +725,7 @@ export const AddContactResponse = zod.object({
   "id": zod.number(),
   "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
   "pocketNumber": zod.string().describe('The contact\'s phone number in canonical form (e.g. \"+967 76XXXXXXX\"). Shown whether or not the number belongs to a registered Pocket Number user.'),
+  "isLinked": zod.boolean().describe('True when this number belongs to a registered Pocket Number account. Only linked contacts can be messaged or called inside the app.'),
   "isVerified": zod.boolean().describe('True only when this number is linked to a registered, verified Pocket Number account.'),
   "createdAt": zod.coerce.date()
 }).describe('A single entry in the caller\'s personal contacts book')
@@ -748,6 +750,7 @@ export const UpdateContactResponse = zod.object({
   "id": zod.number(),
   "localName": zod.string().describe('Custom name chosen by the owner — private, never visible to others'),
   "pocketNumber": zod.string().describe('The contact\'s phone number in canonical form (e.g. \"+967 76XXXXXXX\"). Shown whether or not the number belongs to a registered Pocket Number user.'),
+  "isLinked": zod.boolean().describe('True when this number belongs to a registered Pocket Number account. Only linked contacts can be messaged or called inside the app.'),
   "isVerified": zod.boolean().describe('True only when this number is linked to a registered, verified Pocket Number account.'),
   "createdAt": zod.coerce.date()
 }).describe('A single entry in the caller\'s personal contacts book')

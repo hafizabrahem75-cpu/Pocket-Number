@@ -25,6 +25,8 @@ router.get("/contacts", requireAuth, async (req: AuthRequest, res): Promise<void
       localName: contactsTable.localName,
       createdAt: contactsTable.createdAt,
       phoneNumber: contactsTable.phoneNumber,
+      // Include contactUserId so we can expose isLinked to the client.
+      contactUserId: contactsTable.contactUserId,
       linkedPocketNumber: usersTable.pocketNumber,
       linkedIsVerified: usersTable.isVerified,
     })
@@ -38,6 +40,7 @@ router.get("/contacts", requireAuth, async (req: AuthRequest, res): Promise<void
       id: row.id,
       localName: row.localName,
       pocketNumber: row.linkedPocketNumber ?? row.phoneNumber,
+      isLinked: row.contactUserId !== null,
       isVerified: row.linkedIsVerified ?? false,
       createdAt: row.createdAt.toISOString(),
     })),
@@ -103,6 +106,7 @@ router.post("/contacts", requireAuth, async (req: AuthRequest, res): Promise<voi
       id: created.id,
       localName: created.localName,
       pocketNumber: target?.pocketNumber ?? storedPhoneNumber,
+      isLinked: target !== undefined,
       isVerified: target?.isVerified ?? false,
       createdAt: created.createdAt.toISOString(),
     });
@@ -155,15 +159,23 @@ router.put("/contacts/:id", requireAuth, async (req: AuthRequest, res): Promise<
     .where(and(eq(contactsTable.id, id), eq(contactsTable.ownerId, ownerId)))
     .returning();
 
-  const [contactUser] = await db
-    .select({ pocketNumber: usersTable.pocketNumber, isVerified: usersTable.isVerified })
-    .from(usersTable)
-    .where(eq(usersTable.id, existing.contactUserId));
+  // Only look up the linked user when contactUserId is non-null.
+  // Passing null to eq() is a type error and produces a broken WHERE clause.
+  let contactUser: { pocketNumber: string; isVerified: boolean } | undefined;
+  if (existing.contactUserId !== null) {
+    [contactUser] = await db
+      .select({ pocketNumber: usersTable.pocketNumber, isVerified: usersTable.isVerified })
+      .from(usersTable)
+      .where(eq(usersTable.id, existing.contactUserId));
+  }
 
   res.json({
     id: updated.id,
     localName: updated.localName,
-    pocketNumber: contactUser?.pocketNumber ?? "",
+    // Fall back to the stored phoneNumber for unregistered contacts so the
+    // response never returns an empty string.
+    pocketNumber: contactUser?.pocketNumber ?? updated.phoneNumber,
+    isLinked: existing.contactUserId !== null,
     isVerified: contactUser?.isVerified ?? false,
     createdAt: updated.createdAt.toISOString(),
   });

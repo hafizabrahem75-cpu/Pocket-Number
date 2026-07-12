@@ -1,0 +1,49 @@
+Review and complete the existing Pocket Number V1 contacts functionality.
+
+The goal is to finish the Contacts feature completely for V1 without changing the app identity system.
+
+Fix and complete only these items:
+
+1. Contacts UI:
+- Show Call and Message actions only when the contact is actually linked to an existing Pocket Number user.
+- For unregistered contacts, show a clear status instead of broken actions.
+- Ensure contact rows, empty states, loading states, and search states are polished and consistent.
+
+2. Contact actions and UX:
+- Add proper contact interaction actions where missing:
+  - Long press/context menu or equivalent contact actions.
+  - Contact details view with:
+    - Name
+    - Pocket Number information if available
+    - Online/last seen status if already supported
+    - Message action
+    - Call action
+    - Edit contact name
+    - Delete contact
+- Ensure there are no unfinished buttons or dead actions.
+
+3. Contacts backend:
+- Expose the required linked-user information in the contacts response so the frontend can know whether a contact is a registered Pocket Number user.
+- Fix existing null handling issues in contact update responses.
+- Keep all contact queries scoped to the authenticated user only.
+
+4. Data safety:
+- Ensure deleting a user does not incorrectly delete other users' saved contacts.
+- Keep each user's contacts isolated.
+- Preserve existing authentication and authorization rules.
+
+5. Search and integration:
+- Fix the "already added" state so it reflects the real saved contacts instead of temporary UI state.
+- Verify that contact actions correctly open existing messaging and calling flows.
+- Do not change the messaging or calling architecture.
+
+Important restrictions:
+- Do not add phone-number based discovery.
+- Do not add contact synchronization.
+- Do not add new identity systems or Pocket ID changes.
+- Do not change authentication.
+- Do not introduce unrelated features.
+
+After implementation:
+- Test all contact flows end-to-end.
+- Confirm there are no broken buttons, runtime errors, or TypeScript errors related to these changes.
