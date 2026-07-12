@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   useStartCall,
   useUpdateCallStatus,
@@ -9,6 +9,13 @@ import {
 } from "@workspace/api-client-react";
 import type { CallItem } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { isTerminalCallStatus } from "@/lib/callDisplay";
+
+/** How long a terminal state (ended/missed/declined/busy) stays on screen
+ * before the overlay auto-closes — long enough to read, short enough to
+ * feel responsive. Purely a UI timing concern; the REST call lifecycle
+ * itself is unaffected. */
+const TERMINAL_STATE_DISPLAY_MS = 1600;
 
 /** Minimal identity needed to place a call. */
 export interface CallPeer {
@@ -69,6 +76,24 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
       setActiveCall((current) => (current ? { ...current, call: latest } : current));
     }
   }, [historyData, activeCall]);
+
+  // Once a call reaches a terminal status (ended/missed/declined — however
+  // that happened: our own hangup, the peer's, or a server-side timeout
+  // picked up by polling) briefly keep the overlay up so the user sees why
+  // the call ended, then clear it. This only affects how long the overlay
+  // stays visible, not the REST call lifecycle itself.
+  const terminalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!activeCall || !isTerminalCallStatus(activeCall.call.status)) {
+      return;
+    }
+    terminalTimerRef.current = setTimeout(() => {
+      setActiveCall(null);
+    }, TERMINAL_STATE_DISPLAY_MS);
+    return () => {
+      if (terminalTimerRef.current) clearTimeout(terminalTimerRef.current);
+    };
+  }, [activeCall?.call.id, activeCall?.call.status]);
 
   const incomingCall = useMemo<CallItem | null>(() => {
     if (!user) return null;
@@ -140,13 +165,14 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
 
   const endCall = useCallback(() => {
     setActiveCall((current) => {
-      if (current) {
-        // Forward-only lifecycle: ringing -> declined (cancelled before pickup),
-        // ongoing -> ended. Fire-and-forget; UI already closes the overlay.
-        const nextStatus = current.call.status === "ongoing" ? "ended" : "declined";
-        updateStatusMutation.mutate({ id: current.call.id, data: { status: nextStatus } });
-      }
-      return null;
+      if (!current) return null;
+      // Forward-only lifecycle: ringing -> declined (cancelled before pickup),
+      // ongoing -> ended. Fire-and-forget; optimistically reflect the new
+      // status locally so the overlay can show "Call ended" briefly instead
+      // of vanishing instantly (see the terminal-state effect above).
+      const nextStatus = current.call.status === "ongoing" ? "ended" : "declined";
+      updateStatusMutation.mutate({ id: current.call.id, data: { status: nextStatus } });
+      return { ...current, call: { ...current.call, status: nextStatus } };
     });
   }, [updateStatusMutation]);
 

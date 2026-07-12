@@ -1,6 +1,7 @@
 import { Phone, PhoneOff } from "lucide-react";
 import { useGetUserById, useGetContacts, getGetUserByIdQueryKey } from "@workspace/api-client-react";
 import { useCallLauncher } from "@/contexts/CallLauncherContext";
+import { getCallStatusLabel } from "@/lib/callDisplay";
 
 /**
  * Full-screen overlay shown when another user calls this user (status "ringing").
@@ -23,7 +24,7 @@ export function IncomingCallOverlay() {
     <div className="fixed inset-0 z-50 flex justify-center bg-black/0">
       <div className="w-full max-w-[428px] h-full bg-gradient-to-b from-emerald-600/95 to-emerald-700 flex flex-col items-center justify-between py-16 px-8 animate-in fade-in duration-200">
         <div className="flex flex-col items-center gap-3 mt-10">
-          <span className="text-white/80 text-sm font-medium">مكالمة واردة</span>
+          <span className="text-white/80 text-sm font-medium">{getCallStatusLabel("ringing")}</span>
           <div className="w-28 h-28 rounded-full bg-white/15 border-4 border-white/20 flex items-center justify-center">
             <span className="text-5xl font-black text-white">{letter}</span>
           </div>
