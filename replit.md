@@ -12,6 +12,7 @@
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 - Required env: `SESSION_SECRET` — used as JWT signing secret
+- Optional env (Android push, not yet configured): `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, `FCM_PRIVATE_KEY` — Firebase service-account credentials. Until all three are set, push notifications stay in their current log-only mode; see "Push notifications" below.
 
 ## Stack
 
@@ -81,6 +82,16 @@
 
 ### E2EE readiness
 No schema migration needed to add E2EE: the columns (`content_iv`, `content_tag`, `sender_public_key`) are already there, nullable for Phase 1.
+
+## Push notifications (Android prep — backend only, no Android app yet)
+
+- `lib/db/src/schema/device-tokens.ts` — `device_tokens` table (`userId`, `token` unique, `platform` enum `ios|android|web`)
+- `artifacts/api-server/src/routes/devices.ts` — `POST /api/devices` (register/refresh a token), `DELETE /api/devices/:token` (unregister)
+- `artifacts/api-server/src/lib/notificationEvents.ts` — fire-and-forget hooks already wired into the message and call routes (`notifyNewMessage`, `notifyIncomingCall`); do not need to change when a push provider is added
+- `artifacts/api-server/src/lib/notifications.ts` — `notifyUser` looks up a user's devices and dispatches; log-only when FCM isn't configured (true today)
+- `artifacts/api-server/src/lib/fcm.ts` — Firebase Cloud Messaging client, Android-only for now. Reads `FCM_PROJECT_ID`/`FCM_CLIENT_EMAIL`/`FCM_PRIVATE_KEY` from env; `isFcmConfigured()` guards every call site so it's a total no-op without those set. `firebase-admin` is installed as a dependency of `artifacts/api-server`.
+- **What's ready today:** device token registration/unregistration API, notification event hooks on new messages and incoming calls, an FCM dispatch path that activates automatically once credentials exist, and automatic pruning of tokens FCM reports as invalid.
+- **What's still needed before real push works:** an actual Firebase project + service-account credentials (set as the three env vars above), the Capacitor/Android wrapper to obtain and register real device tokens, and a UI notification-permission prompt. None of that exists yet — this phase only prepared the backend.
 
 ## Product
 

@@ -3,3 +3,5 @@
 - [Pocket Number admin settings](pocket-number-admin-settings.md) — country code/prefix stored in app_settings; tsc project refs need `tsc --build lib/db` after schema exports change
 - [Pocket Number artifact registration gap](pocket-number-artifact-registration.md) — createArtifact can't re-register pre-existing artifact dirs; used manual workflows as workaround after GitHub re-import
 - [Pocket Number WebRTC signaling](pocket-number-webrtc-signaling.md) — WS signaling relay kept fully decoupled from the REST call lifecycle; verify-otp field is `code` not `otp`
+- [pnpm peer-dep duplicate type instances](pnpm-peer-dep-duplicate-types.md) — new dep can satisfy a shared lib's optional peer, duplicating its types across workspace packages; fix by adding the peer to the shared lib too
+- [Pocket Number FCM push prep](pocket-number-fcm-push-prep.md) — backend-only Android push groundwork: FCM client, env-var gated, Android-only, no real Firebase project yet

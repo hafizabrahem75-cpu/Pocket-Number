@@ -1,15 +1,21 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, deviceTokensTable } from "@workspace/db";
 import { logger } from "./logger";
+import { isFcmConfigured, sendPushToTokens } from "./fcm";
 
 /**
  * Notification service foundation.
  *
- * No push provider (Firebase Cloud Messaging or otherwise) is wired up yet.
- * This module gives future call sites (e.g. "notify user of a new
- * message/call") a stable interface to depend on now — only the body of
- * `notifyUser` needs to change once a real provider is added. It is not
- * currently called anywhere; messages/calls logic is untouched.
+ * `notifyUser` dispatches through Firebase Cloud Messaging (FCM) for
+ * Android devices once FCM credentials are configured (see `./fcm.ts`).
+ * Today, in every environment without those credentials — i.e. before the
+ * Android APK exists — this stays a log-only no-op exactly as before, so
+ * this change cannot affect current behavior. It is not called from any
+ * route directly; messages/calls logic only reports events through
+ * `notificationEvents.ts`, which is untouched here.
+ *
+ * iOS/web push delivery is intentionally out of scope — only Android is
+ * targeted for now — those devices simply stay in the log-only path.
  */
 
 export interface NotificationPayload {
@@ -26,8 +32,9 @@ export async function getDeviceTokensForUser(userId: number) {
 /**
  * Send a notification to every device registered for a user.
  *
- * Currently a no-op stub that only logs — swap the body for a real
- * provider call (e.g. Firebase Admin SDK) once that integration is added.
+ * Android devices are sent through FCM when configured; every other case
+ * (no devices, FCM not configured, non-Android platform) falls back to the
+ * original log-only stub behavior.
  */
 export async function notifyUser(userId: number, payload: NotificationPayload): Promise<void> {
   const devices = await getDeviceTokensForUser(userId);
@@ -37,11 +44,30 @@ export async function notifyUser(userId: number, payload: NotificationPayload): 
     return;
   }
 
-  logger.info(
-    { userId, deviceCount: devices.length, title: payload.title },
-    "notifyUser: would dispatch notification (no push provider configured yet)",
-  );
+  if (!isFcmConfigured()) {
+    logger.info(
+      { userId, deviceCount: devices.length, title: payload.title },
+      "notifyUser: would dispatch notification (no push provider configured yet)",
+    );
+    return;
+  }
 
-  // TODO: once a push provider is added, iterate `devices` and dispatch
-  // `payload` to each device.token according to device.platform.
+  const androidTokens = devices.filter((d) => d.platform === "android").map((d) => d.token);
+  const otherDeviceCount = devices.length - androidTokens.length;
+
+  if (otherDeviceCount > 0) {
+    logger.debug(
+      { userId, otherDeviceCount },
+      "notifyUser: non-Android devices are not dispatched yet (Android-only for now)",
+    );
+  }
+
+  if (androidTokens.length === 0) return;
+
+  const { invalidTokens } = await sendPushToTokens(androidTokens, payload);
+
+  if (invalidTokens.length > 0) {
+    await db.delete(deviceTokensTable).where(inArray(deviceTokensTable.token, invalidTokens));
+    logger.info({ userId, count: invalidTokens.length }, "notifyUser: pruned invalid device tokens");
+  }
 }
