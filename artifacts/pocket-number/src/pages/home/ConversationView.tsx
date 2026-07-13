@@ -206,6 +206,17 @@ export default function ConversationView({
   // ── Mark delivered messages as read when conversation is visible ──────────
   const updateStatus = useUpdateMessageStatus();
 
+  // A stable string key whose value changes whenever the exact set of
+  // delivered-to-me message IDs changes — including the race condition where
+  // a retracted message and a newly-delivered message cancel out and leave the
+  // total count unchanged.  Using only `allMessages.length` as a dependency
+  // misses that case because the count stays the same while a different message
+  // enters the "delivered" set.
+  const deliveredToMeKey = allMessages
+    .filter((m) => m.recipientId === myId && m.status === "delivered")
+    .map((m) => m.id)
+    .join(",");
+
   useEffect(() => {
     for (const m of allMessages) {
       if (m.recipientId === myId && m.status === "delivered" && !markedReadIds.current.has(m.id)) {
@@ -228,7 +239,7 @@ export default function ConversationView({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMessages.length]);
+  }, [deliveredToMeKey]);
 
   // ── Scroll to bottom on open and on new messages ──────────────────────────
   const scrollToBottom = (smooth = false) => {

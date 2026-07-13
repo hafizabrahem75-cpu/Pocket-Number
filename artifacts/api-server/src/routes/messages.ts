@@ -329,7 +329,9 @@ function serializeMessage(m: typeof messagesTable.$inferSelect) {
     id: m.id,
     senderId: m.senderId,
     recipientId: m.recipientId,
-    content: m.content,
+    // Permanently suppress content for retracted messages so no client — including
+    // one intercepting raw HTTP responses — can recover the original text.
+    content: m.deletedAt ? null : m.content,
     contentType: m.contentType,
     // E2EE fields — null in Phase 1
     contentIv: m.contentIv ?? null,
