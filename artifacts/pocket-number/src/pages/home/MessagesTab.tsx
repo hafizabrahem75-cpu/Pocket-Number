@@ -104,7 +104,10 @@ function NewMessageSheet({
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const filtered = (contacts ?? []).filter(
+  // Only show contacts that are registered on Pocket Number (isLinked = true).
+  // Unregistered contacts cannot receive messages, so they are excluded entirely.
+  const linkedContacts = (contacts ?? []).filter((c) => c.isLinked);
+  const filtered = linkedContacts.filter(
     (c) =>
       c.localName.toLowerCase().includes(search.toLowerCase()) ||
       c.pocketNumber.toLowerCase().includes(search.toLowerCase()),
@@ -167,7 +170,11 @@ function NewMessageSheet({
             <div className="flex flex-col items-center justify-center py-16 px-8 text-center gap-2">
               <UserX className="w-8 h-8 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">
-                {contacts?.length ? "لا نتائج" : "لا توجد جهات اتصال بعد"}
+                {!contacts?.length
+                  ? "لا توجد جهات اتصال بعد"
+                  : !linkedContacts.length
+                    ? "لا توجد جهات اتصال مسجّلة على التطبيق بعد"
+                    : "لا نتائج"}
               </p>
             </div>
           ) : (
