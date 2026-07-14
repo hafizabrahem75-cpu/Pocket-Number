@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import type { MessageItem } from "@workspace/api-client-react";
 import type { ChatTarget } from "@/contexts/ChatLauncherContext";
-import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown } from "lucide-react";
+import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -50,7 +50,17 @@ function groupByDay(messages: MessageItem[]): { day: string; msgs: MessageItem[]
 
 // ── Status ticks ─────────────────────────────────────────────────────────────
 
-function StatusTick({ status, isPending }: { status: MessageItem["status"]; isPending?: boolean }) {
+function StatusTick({
+  status,
+  isPending,
+  isFailed,
+}: {
+  status: MessageItem["status"];
+  isPending?: boolean;
+  isFailed?: boolean;
+}) {
+  if (isFailed)
+    return <AlertCircle className="w-3 h-3 text-red-300 shrink-0" />;
   if (isPending)
     return <Loader2 className="w-3 h-3 text-primary-foreground/50 shrink-0 animate-spin" />;
   if (status === "sent")
@@ -66,12 +76,16 @@ function MessageBubble({
   msg,
   isMine,
   isPending,
+  isFailed,
   onRetract,
+  onRetry,
 }: {
   msg: MessageItem;
   isMine: boolean;
   isPending?: boolean;
+  isFailed?: boolean;
   onRetract?: () => void;
+  onRetry?: () => void;
 }) {
   if (msg.deletedAt) {
     return (
@@ -90,8 +104,8 @@ function MessageBubble({
         isMine ? "justify-start" : "justify-end",
       )}
     >
-      {/* Retract button for own messages that aren't read yet (not available while pending) */}
-      {isMine && onRetract && msg.status !== "read" && !isPending && (
+      {/* Retract button for own messages that aren't read yet (not available while pending/failed) */}
+      {isMine && onRetract && msg.status !== "read" && !isPending && !isFailed && (
         <button
           onClick={onRetract}
           className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mb-1"
@@ -104,10 +118,12 @@ function MessageBubble({
       <div
         className={cn(
           "max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words transition-opacity",
-          isPending && "opacity-60",
-          isMine
-            ? "bg-primary text-primary-foreground rounded-tl-sm"
-            : "bg-card border border-border text-foreground rounded-tr-sm shadow-sm",
+          isPending && !isFailed && "opacity-60",
+          isFailed
+            ? "bg-red-500/80 text-white rounded-tl-sm"
+            : isMine
+              ? "bg-primary text-primary-foreground rounded-tl-sm"
+              : "bg-card border border-border text-foreground rounded-tr-sm shadow-sm",
         )}
       >
         <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -117,15 +133,26 @@ function MessageBubble({
             isMine ? "justify-start" : "justify-end",
           )}
         >
+          {isFailed && onRetry && (
+            <button
+              onClick={onRetry}
+              className="flex items-center gap-1 text-[10px] text-white/80 hover:text-white transition-colors"
+              aria-label="إعادة الإرسال"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>إعادة</span>
+            </button>
+          )}
           <span
             className={cn(
               "text-[10px] leading-none",
               isMine ? "text-primary-foreground/60" : "text-muted-foreground",
+              isFailed && "text-white/60",
             )}
           >
             {formatTime(msg.createdAt)}
           </span>
-          {isMine && <StatusTick status={msg.status} isPending={isPending} />}
+          {isMine && <StatusTick status={msg.status} isPending={isPending} isFailed={isFailed} />}
         </div>
       </div>
     </div>
@@ -169,9 +196,12 @@ export default function ConversationView({
   // is a negative temp id while pending, and becomes the real server id once
   // the API confirms — it is pruned once the polled thread data includes that
   // real id, so it never sticks around as a duplicate.
+  // `status` is 'pending' while in-flight and 'failed' when the send errored —
+  // failed entries are kept so the user can retry without losing the text.
   interface PendingEntry {
     tempId: number;
     message: MessageItem;
+    status: "pending" | "failed";
   }
   const [pendingMessages, setPendingMessages] = useState<PendingEntry[]>([]);
 
@@ -373,7 +403,7 @@ export default function ConversationView({
       updatedAt: now,
       deletedAt: null,
     };
-    setPendingMessages((prev) => [...prev, { tempId, message: tempMessage }]);
+    setPendingMessages((prev) => [...prev, { tempId, message: tempMessage, status: "pending" }]);
     scrollToBottom(true);
 
     send.mutate(
@@ -384,7 +414,9 @@ export default function ConversationView({
           // keeping its actual status. It stays in `pendingMessages` (now keyed
           // by the real id) until the polled thread confirms it, then gets pruned.
           setPendingMessages((prev) =>
-            prev.map((p) => (p.tempId === tempId ? { tempId, message: serverMessage } : p)),
+            prev.map((p) =>
+              p.tempId === tempId ? { tempId, message: serverMessage, status: "pending" as const } : p,
+            ),
           );
           queryClient.invalidateQueries({
             queryKey: getGetMessageThreadQueryKey({ recipientId: peer.peerId }),
@@ -392,13 +424,55 @@ export default function ConversationView({
           queryClient.invalidateQueries({ queryKey: getGetInboxQueryKey() });
           scrollToBottom(true);
         },
-        onError: (err: any) => {
-          // 3. Remove the temporary message and surface a clear error.
-          setPendingMessages((prev) => prev.filter((p) => p.tempId !== tempId));
+        onError: () => {
+          // 3. Mark as failed — keep the message visible so the user can retry.
+          setPendingMessages((prev) =>
+            prev.map((p) => (p.tempId === tempId ? { ...p, status: "failed" as const } : p)),
+          );
           toast({
             variant: "destructive",
             title: "تعذّر الإرسال",
-            description: err?.error ?? "حدث خطأ غير متوقع، حاول مرة أخرى",
+            description: "حدث خطأ غير متوقع، اضغط إعادة للمحاولة",
+          });
+        },
+      },
+    );
+  };
+
+  // ── Retry a failed send ───────────────────────────────────────────────────
+  const handleRetry = (tempId: number) => {
+    const entry = pendingMessages.find((p) => p.tempId === tempId);
+    if (!entry) return;
+    const content = entry.message.content;
+
+    // Flip back to pending so the spinner shows again
+    setPendingMessages((prev) =>
+      prev.map((p) => (p.tempId === tempId ? { ...p, status: "pending" as const } : p)),
+    );
+
+    send.mutate(
+      { data: { recipientId: peer.peerId, content } },
+      {
+        onSuccess: (serverMessage: MessageItem) => {
+          setPendingMessages((prev) =>
+            prev.map((p) =>
+              p.tempId === tempId ? { tempId, message: serverMessage, status: "pending" as const } : p,
+            ),
+          );
+          queryClient.invalidateQueries({
+            queryKey: getGetMessageThreadQueryKey({ recipientId: peer.peerId }),
+          });
+          queryClient.invalidateQueries({ queryKey: getGetInboxQueryKey() });
+          scrollToBottom(true);
+        },
+        onError: () => {
+          setPendingMessages((prev) =>
+            prev.map((p) => (p.tempId === tempId ? { ...p, status: "failed" as const } : p)),
+          );
+          toast({
+            variant: "destructive",
+            title: "تعذّر الإرسال مجدداً",
+            description: "حدث خطأ غير متوقع، اضغط إعادة للمحاولة",
           });
         },
       },
@@ -445,6 +519,10 @@ export default function ConversationView({
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  const failedTempIds = new Set(
+    pendingMessages.filter((p) => p.status === "failed").map((p) => p.tempId),
+  );
 
   const grouped = groupByDay(allMessages);
 
@@ -511,8 +589,10 @@ export default function ConversationView({
                     key={msg.id}
                     msg={msg}
                     isMine={msg.senderId === myId}
-                    isPending={msg.id < 0}
+                    isPending={msg.id < 0 && !failedTempIds.has(msg.id)}
+                    isFailed={failedTempIds.has(msg.id)}
                     onRetract={msg.senderId === myId ? () => handleRetract(msg.id) : undefined}
+                    onRetry={failedTempIds.has(msg.id) ? () => handleRetry(msg.id) : undefined}
                   />
                 ))}
               </div>
