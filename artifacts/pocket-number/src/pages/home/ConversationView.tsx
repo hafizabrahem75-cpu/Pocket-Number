@@ -12,7 +12,8 @@ import {
 } from "@workspace/api-client-react";
 import type { MessageItem } from "@workspace/api-client-react";
 import type { ChatTarget } from "@/contexts/ChatLauncherContext";
-import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw, X } from "lucide-react";
+import { useCallLauncher } from "@/contexts/CallLauncherContext";
+import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw, X, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -310,6 +311,7 @@ export default function ConversationView({
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { startCall } = useCallLauncher();
   const bottomRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [text, setText] = useState("");
@@ -678,6 +680,13 @@ export default function ConversationView({
             {peer.peerPocketNumber}
           </p>
         </div>
+        <button
+          onClick={() => startCall(peer)}
+          className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 hover:bg-primary/20 active:scale-95 transition-all"
+          aria-label="بدء مكالمة"
+        >
+          <Phone className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Messages list */}
