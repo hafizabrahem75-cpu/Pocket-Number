@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import type { MessageItem } from "@workspace/api-client-react";
 import type { ChatTarget } from "@/contexts/ChatLauncherContext";
-import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw } from "lucide-react";
+import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -48,6 +48,70 @@ function groupByDay(messages: MessageItem[]): { day: string; msgs: MessageItem[]
   }));
 }
 
+// ── Long-press hook ───────────────────────────────────────────────────────────
+// Works on both touch (mobile) and mouse (desktop). Cancels if the pointer
+// moves more than a small threshold — so normal scrolling is never blocked.
+
+function useLongPress(callback: () => void, ms = 500) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pressing, setPressing] = useState(false);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
+
+  const start = useCallback(
+    (x: number, y: number) => {
+      startPos.current = { x, y };
+      setPressing(true);
+      timerRef.current = setTimeout(() => {
+        setPressing(false);
+        callback();
+      }, ms);
+    },
+    [callback, ms],
+  );
+
+  const cancel = useCallback(() => {
+    setPressing(false);
+    startPos.current = null;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const onMove = useCallback(
+    (x: number, y: number) => {
+      if (!startPos.current) return;
+      const dx = Math.abs(x - startPos.current.x);
+      const dy = Math.abs(y - startPos.current.y);
+      if (dx > 8 || dy > 8) cancel();
+    },
+    [cancel],
+  );
+
+  return {
+    pressing,
+    handlers: {
+      onMouseDown: (e: React.MouseEvent) => {
+        if (e.button !== 0) return;
+        start(e.clientX, e.clientY);
+      },
+      onMouseUp: cancel,
+      onMouseLeave: cancel,
+      onMouseMove: (e: React.MouseEvent) => onMove(e.clientX, e.clientY),
+      onTouchStart: (e: React.TouchEvent) => {
+        const t = e.touches[0];
+        start(t.clientX, t.clientY);
+      },
+      onTouchEnd: cancel,
+      onTouchMove: (e: React.TouchEvent) => {
+        const t = e.touches[0];
+        onMove(t.clientX, t.clientY);
+      },
+      onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+    },
+  };
+}
+
 // ── Status ticks ─────────────────────────────────────────────────────────────
 
 function StatusTick({
@@ -77,16 +141,19 @@ function MessageBubble({
   isMine,
   isPending,
   isFailed,
-  onRetract,
+  onLongPress,
   onRetry,
 }: {
   msg: MessageItem;
   isMine: boolean;
   isPending?: boolean;
   isFailed?: boolean;
-  onRetract?: () => void;
+  onLongPress?: () => void;
   onRetry?: () => void;
 }) {
+  const { pressing, handlers } = useLongPress(onLongPress ?? (() => {}));
+  const isInteractive = !!onLongPress;
+
   if (msg.deletedAt) {
     return (
       <div className={cn("flex", isMine ? "justify-start" : "justify-end")}>
@@ -100,24 +167,16 @@ function MessageBubble({
   return (
     <div
       className={cn(
-        "flex items-end gap-1.5 group",
+        "flex items-end gap-1.5",
         isMine ? "justify-start" : "justify-end",
       )}
     >
-      {/* Retract button for own messages that aren't read yet (not available while pending/failed) */}
-      {isMine && onRetract && msg.status !== "read" && !isPending && !isFailed && (
-        <button
-          onClick={onRetract}
-          className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mb-1"
-          aria-label="سحب الرسالة"
-        >
-          <Trash2 className="w-3 h-3 text-muted-foreground" />
-        </button>
-      )}
-
       <div
+        {...(isInteractive ? handlers : {})}
         className={cn(
-          "max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words transition-opacity",
+          "max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words transition-all duration-100 select-none",
+          isInteractive && "cursor-pointer",
+          pressing && "scale-95 brightness-90",
           isPending && !isFailed && "opacity-60",
           isFailed
             ? "bg-red-500/80 text-white rounded-tl-sm"
@@ -171,6 +230,74 @@ function DayDivider({ label }: { label: string }) {
   );
 }
 
+// ── Message action sheet ──────────────────────────────────────────────────────
+
+function MessageActionSheet({
+  open,
+  onRetract,
+  onClose,
+}: {
+  open: boolean;
+  onRetract: () => void;
+  onClose: () => void;
+}) {
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end max-w-[428px] mx-auto">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+
+      {/* Sheet panel */}
+      <div className="relative bg-card rounded-t-2xl shadow-xl animate-in slide-in-from-bottom-4 duration-250 pb-safe">
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-1 rounded-full bg-muted-foreground/25" />
+        </div>
+
+        <div className="px-4 pt-2 pb-4 space-y-1">
+          {/* Retract action */}
+          <button
+            onClick={() => {
+              onClose();
+              onRetract();
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-destructive hover:bg-destructive/8 active:bg-destructive/15 transition-colors text-sm font-medium"
+          >
+            <Trash2 className="w-4 h-4 shrink-0" />
+            <span>سحب الرسالة</span>
+          </button>
+
+          {/* Divider */}
+          <div className="h-px bg-border mx-1" />
+
+          {/* Cancel */}
+          <button
+            onClick={onClose}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-muted-foreground hover:bg-muted/60 active:bg-muted transition-colors text-sm font-medium"
+          >
+            <X className="w-4 h-4 shrink-0" />
+            <span>إلغاء</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ConversationView({
@@ -190,6 +317,10 @@ export default function ConversationView({
   const [olderMessages, setOlderMessages] = useState<MessageItem[]>([]);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const markedReadIds = useRef(new Set<number>());
+
+  // ── Action sheet state ────────────────────────────────────────────────────
+  // Stores the id of the message the user long-pressed; null = sheet closed.
+  const [actionSheetMsgId, setActionSheetMsgId] = useState<number | null>(null);
 
   // ── Optimistic send state ──────────────────────────────────────────────────
   // Each entry represents one in-flight (or just-confirmed) send. `message.id`
@@ -506,6 +637,7 @@ export default function ConversationView({
             queryKey: getGetMessageThreadQueryKey({ recipientId: peer.peerId }),
           });
           queryClient.invalidateQueries({ queryKey: getGetInboxQueryKey() });
+          toast({ title: "تم سحب الرسالة" });
         },
         onError: (err: any) => {
           toast({
@@ -584,17 +716,25 @@ export default function ConversationView({
             <div key={gi}>
               <DayDivider label={group.day} />
               <div className="space-y-1.5">
-                {group.msgs.map((msg) => (
-                  <MessageBubble
-                    key={msg.id}
-                    msg={msg}
-                    isMine={msg.senderId === myId}
-                    isPending={msg.id < 0 && !failedTempIds.has(msg.id)}
-                    isFailed={failedTempIds.has(msg.id)}
-                    onRetract={msg.senderId === myId ? () => handleRetract(msg.id) : undefined}
-                    onRetry={failedTempIds.has(msg.id) ? () => handleRetry(msg.id) : undefined}
-                  />
-                ))}
+                {group.msgs.map((msg) => {
+                  const isMine = msg.senderId === myId;
+                  const isFailed = failedTempIds.has(msg.id);
+                  const isPending = msg.id < 0 && !isFailed;
+                  // Long-press is available on own messages that are still retractable
+                  const canLongPress =
+                    isMine && !isPending && !isFailed && !msg.deletedAt && msg.status !== "read";
+                  return (
+                    <MessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      isMine={isMine}
+                      isPending={isPending}
+                      isFailed={isFailed}
+                      onLongPress={canLongPress ? () => setActionSheetMsgId(msg.id) : undefined}
+                      onRetry={isFailed ? () => handleRetry(msg.id) : undefined}
+                    />
+                  );
+                })}
               </div>
             </div>
           ))
@@ -638,6 +778,15 @@ export default function ConversationView({
         </div>
         <div className="h-safe-bottom" />
       </div>
+
+      {/* Message action sheet */}
+      <MessageActionSheet
+        open={actionSheetMsgId !== null}
+        onRetract={() => {
+          if (actionSheetMsgId !== null) handleRetract(actionSheetMsgId);
+        }}
+        onClose={() => setActionSheetMsgId(null)}
+      />
     </div>
   );
 }
