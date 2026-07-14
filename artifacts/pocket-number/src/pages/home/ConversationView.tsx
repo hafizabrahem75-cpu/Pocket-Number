@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -50,7 +50,9 @@ function groupByDay(messages: MessageItem[]): { day: string; msgs: MessageItem[]
 
 // ── Status ticks ─────────────────────────────────────────────────────────────
 
-function StatusTick({ status }: { status: MessageItem["status"] }) {
+function StatusTick({ status, isPending }: { status: MessageItem["status"]; isPending?: boolean }) {
+  if (isPending)
+    return <Loader2 className="w-3 h-3 text-primary-foreground/50 shrink-0 animate-spin" />;
   if (status === "sent")
     return <Clock className="w-3 h-3 text-primary-foreground/50 shrink-0" />;
   if (status === "delivered")
@@ -63,10 +65,12 @@ function StatusTick({ status }: { status: MessageItem["status"] }) {
 function MessageBubble({
   msg,
   isMine,
+  isPending,
   onRetract,
 }: {
   msg: MessageItem;
   isMine: boolean;
+  isPending?: boolean;
   onRetract?: () => void;
 }) {
   if (msg.deletedAt) {
@@ -86,8 +90,8 @@ function MessageBubble({
         isMine ? "justify-start" : "justify-end",
       )}
     >
-      {/* Retract button for own messages that aren't read yet */}
-      {isMine && onRetract && msg.status !== "read" && (
+      {/* Retract button for own messages that aren't read yet (not available while pending) */}
+      {isMine && onRetract && msg.status !== "read" && !isPending && (
         <button
           onClick={onRetract}
           className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mb-1"
@@ -99,7 +103,8 @@ function MessageBubble({
 
       <div
         className={cn(
-          "max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
+          "max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words transition-opacity",
+          isPending && "opacity-60",
           isMine
             ? "bg-primary text-primary-foreground rounded-tl-sm"
             : "bg-card border border-border text-foreground rounded-tr-sm shadow-sm",
@@ -120,7 +125,7 @@ function MessageBubble({
           >
             {formatTime(msg.createdAt)}
           </span>
-          {isMine && <StatusTick status={msg.status} />}
+          {isMine && <StatusTick status={msg.status} isPending={isPending} />}
         </div>
       </div>
     </div>
@@ -159,6 +164,17 @@ export default function ConversationView({
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const markedReadIds = useRef(new Set<number>());
 
+  // ── Optimistic send state ──────────────────────────────────────────────────
+  // Each entry represents one in-flight (or just-confirmed) send. `message.id`
+  // is a negative temp id while pending, and becomes the real server id once
+  // the API confirms — it is pruned once the polled thread data includes that
+  // real id, so it never sticks around as a duplicate.
+  interface PendingEntry {
+    tempId: number;
+    message: MessageItem;
+  }
+  const [pendingMessages, setPendingMessages] = useState<PendingEntry[]>([]);
+
   const myId = user?.id ?? 0;
 
   // ── Pagination state (tracks cursor/hasMore from each loadMore response) ──
@@ -180,7 +196,11 @@ export default function ConversationView({
     },
   );
 
-  const liveMessages = threadData?.messages ?? [];
+  // Memoized so the reference is stable across renders when the underlying
+  // data hasn't changed — otherwise effects keyed on `liveMessages` would
+  // re-fire every render (since `threadData?.messages ?? []` would create a
+  // brand new array each time) and risk an infinite update loop.
+  const liveMessages = useMemo(() => threadData?.messages ?? [], [threadData]);
 
   // Seed pagination state from the first live response (only once)
   useEffect(() => {
@@ -193,15 +213,36 @@ export default function ConversationView({
     }
   }, [threadData, paginationState.initialized]);
 
-  // Merge older (paginated) + live, dedup by id, sort by createdAt ascending
+  // Merge older (paginated) + live + optimistic sends, dedup by id, sort by
+  // createdAt ascending. Optimistic entries only fill in when their id isn't
+  // already covered by live/older data, so once the server-confirmed message
+  // shows up via polling, the real one wins and the optimistic copy is a no-op.
   const allMessages = useCallback(() => {
     const map = new Map<number, MessageItem>();
     for (const m of olderMessages) map.set(m.id, m);
     for (const m of liveMessages) map.set(m.id, m);
+    for (const p of pendingMessages) {
+      if (!map.has(p.message.id)) map.set(p.message.id, p.message);
+    }
     return Array.from(map.values()).sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
-  }, [olderMessages, liveMessages])();
+  }, [olderMessages, liveMessages, pendingMessages])();
+
+  // Once a confirmed send's real id shows up in the live/polled thread data,
+  // its pending entry is no longer needed — drop it to avoid unbounded growth.
+  useEffect(() => {
+    setPendingMessages((prev) => {
+      const next = prev.filter(
+        (p) => p.message.id < 0 || !liveMessages.some((m: MessageItem) => m.id === p.message.id),
+      );
+      // Bail out without creating a new array when nothing was actually
+      // pruned — otherwise this would set state (and re-render) every time
+      // the effect runs, even when there is nothing to prune.
+      return next.length === prev.length ? prev : next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveMessages]);
 
   // ── Mark delivered messages as read when conversation is visible ──────────
   const updateStatus = useUpdateMessageStatus();
@@ -304,17 +345,47 @@ export default function ConversationView({
   const send = useSendMessage();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const tempIdCounter = useRef(0);
+
   const handleSend = () => {
     const content = text.trim();
-    if (!content || send.isPending) return;
+    if (!content) return;
     setText("");
     // Reset textarea height
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
+    // 1. Optimistic: show the message immediately with a pending indicator.
+    // Negative ids can never collide with real (serial, positive) server ids.
+    tempIdCounter.current -= 1;
+    const tempId = tempIdCounter.current;
+    const now = new Date().toISOString();
+    const tempMessage: MessageItem = {
+      id: tempId,
+      senderId: myId,
+      recipientId: peer.peerId,
+      content,
+      contentType: "text/plain",
+      contentIv: null,
+      contentTag: null,
+      senderPublicKey: null,
+      status: "sent",
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    setPendingMessages((prev) => [...prev, { tempId, message: tempMessage }]);
+    scrollToBottom(true);
+
     send.mutate(
       { data: { recipientId: peer.peerId, content } },
       {
-        onSuccess: () => {
+        onSuccess: (serverMessage: MessageItem) => {
+          // 2. Replace the temporary message with the real one from the server,
+          // keeping its actual status. It stays in `pendingMessages` (now keyed
+          // by the real id) until the polled thread confirms it, then gets pruned.
+          setPendingMessages((prev) =>
+            prev.map((p) => (p.tempId === tempId ? { tempId, message: serverMessage } : p)),
+          );
           queryClient.invalidateQueries({
             queryKey: getGetMessageThreadQueryKey({ recipientId: peer.peerId }),
           });
@@ -322,10 +393,12 @@ export default function ConversationView({
           scrollToBottom(true);
         },
         onError: (err: any) => {
+          // 3. Remove the temporary message and surface a clear error.
+          setPendingMessages((prev) => prev.filter((p) => p.tempId !== tempId));
           toast({
             variant: "destructive",
             title: "تعذّر الإرسال",
-            description: err?.error ?? "حدث خطأ غير متوقع",
+            description: err?.error ?? "حدث خطأ غير متوقع، حاول مرة أخرى",
           });
         },
       },
@@ -438,6 +511,7 @@ export default function ConversationView({
                     key={msg.id}
                     msg={msg}
                     isMine={msg.senderId === myId}
+                    isPending={msg.id < 0}
                     onRetract={msg.senderId === myId ? () => handleRetract(msg.id) : undefined}
                   />
                 ))}
@@ -475,15 +549,11 @@ export default function ConversationView({
           />
           <button
             onClick={handleSend}
-            disabled={!text.trim() || send.isPending}
+            disabled={!text.trim()}
             className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="إرسال"
           >
-            {send.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" style={{ transform: "scaleX(-1)" }} />
-            )}
+            <Send className="w-4 h-4" style={{ transform: "scaleX(-1)" }} />
           </button>
         </div>
         <div className="h-safe-bottom" />
