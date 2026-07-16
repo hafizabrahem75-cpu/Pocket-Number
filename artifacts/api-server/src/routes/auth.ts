@@ -16,6 +16,8 @@ import {
   UpdateMeBody,
   ChangePasswordBody,
   DeleteMeBody,
+  ForgotPasswordBody,
+  ResetPasswordBody,
 } from "@workspace/api-zod";
 import { signToken } from "../lib/jwt";
 import { generateOtpCode, getOtpExpiry, sendOtpEmail } from "../lib/otp";
@@ -366,6 +368,117 @@ router.patch("/auth/password", requireAuth, async (req: AuthRequest, res): Promi
 
   req.log.info({ userId: req.userId }, "User changed password");
   res.json({ message: "تم تغيير كلمة المرور بنجاح" });
+});
+
+// ── POST /auth/forgot-password ────────────────────────────────────────────────
+
+router.post("/auth/forgot-password", authRateLimit, async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { email } = parsed.data;
+  const lowerEmail = email.toLowerCase().trim();
+
+  // Always respond 200 — never leak whether an email address is registered.
+  const defaultPayload: { message: string; devCode?: string } = {
+    message: "إذا كان البريد الإلكتروني مسجّلاً، سيصلك رمز إعادة التعيين خلال لحظات",
+  };
+
+  const [user] = await db
+    .select({ id: usersTable.id, isVerified: usersTable.isVerified })
+    .from(usersTable)
+    .where(eq(usersTable.email, lowerEmail));
+
+  if (!user) {
+    // Silent success — don't reveal that email doesn't exist
+    res.json(defaultPayload);
+    return;
+  }
+
+  // Invalidate any existing OTP / reset codes for this email so only the
+  // newest code is valid at any given time.
+  await db
+    .update(otpCodesTable)
+    .set({ used: true })
+    .where(eq(otpCodesTable.email, lowerEmail));
+
+  const code = generateOtpCode();
+  const expiresAt = getOtpExpiry();
+  await db.insert(otpCodesTable).values({ email: lowerEmail, code, expiresAt });
+
+  // Uses the same email stub as registration OTP — swap sendOtpEmail for a
+  // dedicated reset-password template once a real email provider is wired.
+  await sendOtpEmail(lowerEmail, code);
+
+  req.log.info({ email: lowerEmail }, "Password reset code sent");
+
+  const responsePayload = { ...defaultPayload };
+  if (process.env.NODE_ENV !== "production") {
+    responsePayload.devCode = code;
+  }
+  res.json(responsePayload);
+});
+
+// ── POST /auth/reset-password ─────────────────────────────────────────────────
+
+router.post("/auth/reset-password", authRateLimit, async (req, res): Promise<void> => {
+  const parsed = ResetPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { email, code, newPassword } = parsed.data;
+  const lowerEmail = email.toLowerCase().trim();
+  const now = new Date();
+
+  // Look up a valid, unused, unexpired reset code for this email.
+  const [otp] = await db
+    .select()
+    .from(otpCodesTable)
+    .where(
+      and(
+        eq(otpCodesTable.email, lowerEmail),
+        eq(otpCodesTable.code, code),
+        eq(otpCodesTable.used, false),
+        gt(otpCodesTable.expiresAt, now),
+      ),
+    )
+    .limit(1);
+
+  if (!otp) {
+    res.status(400).json({ error: "رمز إعادة التعيين غير صحيح أو انتهت صلاحيته" });
+    return;
+  }
+
+  // Invalidate the token immediately — single use.
+  await db
+    .update(otpCodesTable)
+    .set({ used: true })
+    .where(eq(otpCodesTable.id, otp.id));
+
+  // Locate the user account.
+  const [user] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.email, lowerEmail));
+
+  if (!user) {
+    res.status(400).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 12);
+  await db
+    .update(usersTable)
+    .set({ passwordHash: newHash })
+    .where(eq(usersTable.id, user.id));
+
+  req.log.info({ userId: user.id }, "Password reset successfully");
+  res.json({ message: "تم إعادة تعيين كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن." });
 });
 
 // ── DELETE /auth/me — delete account ─────────────────────────────────────────

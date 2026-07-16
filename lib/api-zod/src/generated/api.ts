@@ -148,7 +148,7 @@ export const SendMessageResponse = zod.object({
   "id": zod.number(),
   "senderId": zod.number(),
   "recipientId": zod.number(),
-  "content": zod.string().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device.\n'),
+  "content": zod.string().nullable().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device. Null when the message has been retracted (deletedAt is non-null) — the original content is permanently suppressed and must not be reconstructed.\n'),
   "contentType": zod.string().describe('MIME-like type hint (e.g. text\/plain). Reserved for future binary types.'),
   "contentIv": zod.string().nullable().describe('E2EE: AES-GCM IV (base64url). Null in Phase 1.'),
   "contentTag": zod.string().nullable().describe('E2EE: AES-GCM authentication tag (base64url). Null in Phase 1.'),
@@ -197,7 +197,7 @@ export const GetMessageThreadResponse = zod.object({
   "id": zod.number(),
   "senderId": zod.number(),
   "recipientId": zod.number(),
-  "content": zod.string().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device.\n'),
+  "content": zod.string().nullable().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device. Null when the message has been retracted (deletedAt is non-null) — the original content is permanently suppressed and must not be reconstructed.\n'),
   "contentType": zod.string().describe('MIME-like type hint (e.g. text\/plain). Reserved for future binary types.'),
   "contentIv": zod.string().nullable().describe('E2EE: AES-GCM IV (base64url). Null in Phase 1.'),
   "contentTag": zod.string().nullable().describe('E2EE: AES-GCM authentication tag (base64url). Null in Phase 1.'),
@@ -227,7 +227,7 @@ export const UpdateMessageStatusResponse = zod.object({
   "id": zod.number(),
   "senderId": zod.number(),
   "recipientId": zod.number(),
-  "content": zod.string().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device.\n'),
+  "content": zod.string().nullable().describe('Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device. Null when the message has been retracted (deletedAt is non-null) — the original content is permanently suppressed and must not be reconstructed.\n'),
   "contentType": zod.string().describe('MIME-like type hint (e.g. text\/plain). Reserved for future binary types.'),
   "contentIv": zod.string().nullable().describe('E2EE: AES-GCM IV (base64url). Null in Phase 1.'),
   "contentTag": zod.string().nullable().describe('E2EE: AES-GCM authentication tag (base64url). Null in Phase 1.'),
@@ -489,6 +489,43 @@ export const ChangePasswordBody = zod.object({
 })
 
 export const ChangePasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * Generates a one-time reset code and dispatches it to the registered email. Always responds 200 to avoid leaking whether an email address is registered. In development mode the code is included in the response body (devCode field) so the flow can be exercised without a real email provider.
+ * @summary Request a password reset code
+ */
+export const ForgotPasswordBody = zod.object({
+  "email": zod.string()
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "message": zod.string(),
+  "devCode": zod.string().optional().describe('Reset code for testing — present only in development mode, never in production')
+})
+
+
+/**
+ * Verifies the one-time reset code issued by /auth/forgot-password, then replaces the user's password with the supplied newPassword. The code is invalidated immediately after a successful reset.
+ * @summary Reset password using a one-time code
+ */
+export const resetPasswordBodyCodeMin = 6;
+export const resetPasswordBodyCodeMax = 6;
+
+export const resetPasswordBodyNewPasswordMin = 8;
+export const resetPasswordBodyNewPasswordMax = 100;
+
+
+
+export const ResetPasswordBody = zod.object({
+  "email": zod.string(),
+  "code": zod.string().min(resetPasswordBodyCodeMin).max(resetPasswordBodyCodeMax),
+  "newPassword": zod.string().min(resetPasswordBodyNewPasswordMin).max(resetPasswordBodyNewPasswordMax)
+})
+
+export const ResetPasswordResponse = zod.object({
   "message": zod.string()
 })
 

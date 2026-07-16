@@ -898,6 +898,73 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request a password reset code
+      description: >
+        Generates a one-time reset code and dispatches it to the registered email.
+        Always responds 200 to avoid leaking whether an email address is registered.
+        In development mode the code is included in the response body (devCode field)
+        so the flow can be exercised without a real email provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Reset code sent (or silently no-op if email is not registered)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  devCode:
+                    type: string
+                    description: Reset code for testing — present only in development mode, never in production
+                required:
+                  - message
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Reset password using a one-time code
+      description: >
+        Verifies the one-time reset code issued by /auth/forgot-password, then
+        replaces the user's password with the supplied newPassword.
+        The code is invalidated immediately after a successful reset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid or expired reset code, or weak password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /users/heartbeat:
     post:
       operationId: heartbeat
@@ -1573,6 +1640,32 @@ components:
       required:
         - email
         - password
+
+    ForgotPasswordInput:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
+
+    ResetPasswordInput:
+      type: object
+      properties:
+        email:
+          type: string
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 100
+      required:
+        - email
+        - code
+        - newPassword
 
     SendFriendRequestInput:
       type: object

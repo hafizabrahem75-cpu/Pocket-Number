@@ -152,6 +152,24 @@ export interface LoginInput {
   password: string;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  email: string;
+  /**
+     * @minLength 6
+     * @maxLength 6
+     */
+  code: string;
+  /**
+     * @minLength 8
+     * @maxLength 100
+     */
+  newPassword: string;
+}
+
 export interface SendFriendRequestInput {
   addresseeId: number;
 }
@@ -310,11 +328,7 @@ export interface MessageItem {
   id: number;
   senderId: number;
   recipientId: number;
-  /**
-   * Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv
-   * and contentTag for AES-GCM decryption on the recipient device.
-   * Null when the message has been retracted (deletedAt is non-null).
-   */
+  /** Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device. Null when the message has been retracted (deletedAt is non-null) — the original content is permanently suppressed and must not be reconstructed. */
   content: string | null;
   /** MIME-like type hint (e.g. text/plain). Reserved for future binary types. */
   contentType: string;
@@ -455,6 +469,12 @@ export type ResendOtp200 = {
   message: string;
   /** OTP code for testing — present only in development mode, never in production */
   devOtp?: string;
+};
+
+export type ForgotPassword200 = {
+  message: string;
+  /** Reset code for testing — present only in development mode, never in production */
+  devCode?: string;
 };
 
 export type SearchUsersParams = {

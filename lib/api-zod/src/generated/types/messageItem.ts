@@ -14,8 +14,8 @@ export interface MessageItem {
   id: number;
   senderId: number;
   recipientId: number;
-  /** Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device. */
-  content: string;
+  /** Phase 1: plaintext body. Phase 2 (E2EE): base64url-encoded ciphertext — paired with contentIv and contentTag for AES-GCM decryption on the recipient device. Null when the message has been retracted (deletedAt is non-null) — the original content is permanently suppressed and must not be reconstructed. */
+  content: string | null;
   /** MIME-like type hint (e.g. text/plain). Reserved for future binary types. */
   contentType: string;
   /** E2EE: AES-GCM IV (base64url). Null in Phase 1. */

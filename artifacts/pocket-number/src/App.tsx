@@ -15,6 +15,8 @@ import Splash from '@/pages/Splash';
 import Register from '@/pages/Register';
 import VerifyOtp from '@/pages/VerifyOtp';
 import Login from '@/pages/Login';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import HomeShell from '@/pages/home/HomeShell';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
@@ -37,6 +39,8 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/verify-otp" component={VerifyOtp} />
       <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       
       <Route path="/home">
         {() => <ProtectedRoute component={HomeShell} />}

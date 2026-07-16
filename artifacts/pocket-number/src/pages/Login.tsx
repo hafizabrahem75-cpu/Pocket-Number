@@ -88,9 +88,24 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>كلمة المرور</FormLabel>
+                    <div className="flex items-center justify-between mb-2">
+                      <FormLabel className="mb-0">كلمة المرور</FormLabel>
+                      <Link
+                        href="/forgot-password"
+                        className="text-xs text-primary font-medium hover:underline"
+                      >
+                        نسيت كلمة المرور؟
+                      </Link>
+                    </div>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" className="text-left" dir="ltr" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        className="text-left"
+                        dir="ltr"
+                        autoComplete="current-password"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
