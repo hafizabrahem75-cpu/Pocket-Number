@@ -8,6 +8,7 @@ import { ChatLauncherProvider } from '@/contexts/ChatLauncherContext';
 import { CallLauncherProvider } from '@/contexts/CallLauncherContext';
 import { CallOverlay } from '@/components/CallOverlay';
 import { IncomingCallOverlay } from '@/components/IncomingCallOverlay';
+import { CallToneManager } from '@/components/CallToneManager';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 import Splash from '@/pages/Splash';
@@ -64,6 +65,7 @@ function App() {
             <AuthProvider>
               <ChatLauncherProvider>
                 <CallLauncherProvider>
+                  <CallToneManager />
                   <Router />
                   <CallOverlay />
                   <IncomingCallOverlay />
