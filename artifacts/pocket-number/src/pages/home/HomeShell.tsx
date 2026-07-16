@@ -16,6 +16,7 @@ import ContactsTab from "./ContactsTab";
 import CallsTab from "./CallsTab";
 import MessagesTab from "./MessagesTab";
 import HistoryTab from "./HistoryTab";
+import { OnboardingSheet } from "@/components/OnboardingSheet";
 
 type Tab = "calls" | "messages" | "contacts" | "history";
 
@@ -58,6 +59,7 @@ export default function HomeShell() {
 
   return (
     <MobileLayout>
+      <OnboardingSheet />
       {/* Top header */}
       <div className="bg-background border-b border-border px-5 py-4 flex items-center justify-between shrink-0">
         <div>
