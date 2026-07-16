@@ -1,0 +1,28 @@
+What was implemented
+src/hooks/useCallTones.ts — new file
+The core hook. Derives a ToneMode ("incoming" | "outgoing" | "none") from call state and transitions audio/vibration accordingly.
+
+Tone synthesis — all audio is generated at runtime via the Web Audio API; no audio files needed. Two frequency chord (440 Hz + 480 Hz — the standard NANP telephone ring frequencies) rendered into a looping AudioBuffer:
+
+Mode	Pattern	Loop
+Incoming ringtone	Burst · silence · burst · long pause	4 s
+Outgoing ringback	Long tone · long pause	6 s
+Each segment gets a 3 ms linear fade-in/out to prevent audible clicks at loop boundaries.
+
+Vibration — navigator.vibrate([1000, 500] × 20) for incoming calls. Stops immediately on any state transition. No-op where the API isn't available.
+
+AudioContext lifecycle — created lazily on first use, reused for the session so buffer synthesis only happens once. Calls ctx.resume() before every playback to handle browsers that suspend the context after tab-visibility changes.
+
+Clean transitions — mode is compared with lastModeRef on each effect run. Audio only stops and restarts when the mode actually changes, not on every re-render. Stops immediately when:
+
+Call is accepted (mode becomes "none")
+Call is rejected / cancelled / missed / ended (mode becomes "none")
+Component unmounts
+src/components/CallToneManager.tsx — new file
+A zero-UI component that mounts once inside CallLauncherProvider and calls useCallTones. Keeping it here (rather than inside the overlays) means tones stop and start at the correct moment regardless of overlay mount/unmount animation timing.
+
+src/App.tsx — modified
+<CallToneManager /> added as the first child inside <CallLauncherProvider>.
+
+Android APK readiness
+The hook is structured with the APK swap in mind. The ToneMode enum is the only interface that needs to survive the port — in a Capacitor/Cordova build, the Web Audio synthesis block is replaced with RingtoneManager.getDefaultUri(TYPE_RINGTONE) for incoming, AudioManager.STREAM_VOICE_CALL + MediaPlayer for ringback, and VibrationEffect.createWaveform() for haptics. The mode derivation logic and the lifecycle effects stay unchanged.
