@@ -6,6 +6,8 @@ import {
   useSendMessage,
   useDeleteMessage,
   useUpdateMessageStatus,
+  useGetUserById,
+  getGetUserByIdQueryKey,
   getGetInboxQueryKey,
   getGetMessageThreadQueryKey,
   getMessageThread,
@@ -18,6 +20,41 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatLastSeen(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return "آخر ظهور منذ لحظات";
+  const mins = Math.floor(diff / 60);
+  if (mins < 60) return `آخر ظهور منذ ${mins} ${mins === 1 ? "دقيقة" : "دقائق"}`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `آخر ظهور منذ ${hours} ${hours === 1 ? "ساعة" : "ساعات"}`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `آخر ظهور منذ ${days} ${days === 1 ? "يوم" : "أيام"}`;
+  return `آخر ظهور ${new Date(iso).toLocaleDateString("ar-EG", { day: "numeric", month: "long" })}`;
+}
+
+// ── Peer presence indicator ───────────────────────────────────────────────────
+
+function PeerPresence({
+  isOnline,
+  lastSeenAt,
+}: {
+  isOnline: boolean;
+  lastSeenAt: string | null | undefined;
+}) {
+  if (isOnline) {
+    return (
+      <span className="flex items-center gap-1">
+        <span className="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0" />
+        <span>متصل الآن</span>
+      </span>
+    );
+  }
+  if (lastSeenAt) {
+    return <span>{formatLastSeen(lastSeenAt)}</span>;
+  }
+  return null;
+}
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ar-EG", {
@@ -339,6 +376,15 @@ export default function ConversationView({
   const [pendingMessages, setPendingMessages] = useState<PendingEntry[]>([]);
 
   const myId = user?.id ?? 0;
+
+  // ── Peer presence (polls every 30 s) ─────────────────────────────────────
+  const { data: peerProfile } = useGetUserById(peer.peerId, {
+    query: {
+      queryKey: getGetUserByIdQueryKey(peer.peerId),
+      refetchInterval: 30_000,
+      staleTime: 0,
+    },
+  });
 
   // ── Pagination state (tracks cursor/hasMore from each loadMore response) ──
   const [paginationState, setPaginationState] = useState<{
@@ -679,6 +725,14 @@ export default function ConversationView({
           <p className="text-xs text-muted-foreground font-mono" dir="ltr">
             {peer.peerPocketNumber}
           </p>
+          {peerProfile && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              <PeerPresence
+                isOnline={peerProfile.isOnline}
+                lastSeenAt={peerProfile.lastSeenAt}
+              />
+            </p>
+          )}
         </div>
         <button
           onClick={() => startCall(peer)}
