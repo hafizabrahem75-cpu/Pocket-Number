@@ -18,6 +18,7 @@ import {
   Pencil,
   Check,
   X,
+  Share2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatLastSeen } from "@/lib/formatLastSeen";
@@ -51,6 +52,21 @@ export default function Profile() {
     if (displayUser?.pocketNumber) {
       navigator.clipboard.writeText(displayUser.pocketNumber);
       setCopied(true);
+    }
+  };
+
+  const shareNumber = async () => {
+    if (!displayUser?.pocketNumber) return;
+    const text = `تواصل معي عبر Pocket Number\n\nPocket Number:\n${displayUser.pocketNumber}\n\nحمّل التطبيق وأضفني باستخدام هذا الرقم.`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+      } catch {
+        // user cancelled — do nothing
+      }
+    } else {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "تم النسخ", description: "تم نسخ رقمك مع نص المشاركة إلى الحافظة" });
     }
   };
 
@@ -151,6 +167,17 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+
+            {/* Share */}
+            <Button
+              variant="outline"
+              className="w-full gap-2 border-2 text-base font-semibold"
+              onClick={shareNumber}
+              disabled={!displayUser.pocketNumber}
+            >
+              <Share2 className="w-5 h-5" />
+              مشاركة رقمي
+            </Button>
 
             {/* User Details */}
             <div className="bg-background rounded-3xl p-1 shadow-sm border">
