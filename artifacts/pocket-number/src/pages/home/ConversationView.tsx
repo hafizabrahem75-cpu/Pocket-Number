@@ -15,7 +15,7 @@ import {
 import type { MessageItem } from "@workspace/api-client-react";
 import type { ChatTarget } from "@/contexts/ChatLauncherContext";
 import { useCallLauncher } from "@/contexts/CallLauncherContext";
-import { ChevronRight, Send, Loader2, Trash2, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw, X, Phone } from "lucide-react";
+import { ChevronRight, Send, Loader2, Trash2, Check, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw, X, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -166,10 +166,9 @@ function StatusTick({
   if (isPending)
     return <Loader2 className="w-3 h-3 text-primary-foreground/50 shrink-0 animate-spin" />;
   if (status === "sent")
-    return <Clock className="w-3 h-3 text-primary-foreground/50 shrink-0" />;
-  if (status === "delivered")
-    return <CheckCheck className="w-3.5 h-3.5 text-primary-foreground/70 shrink-0" />;
-  return <CheckCheck className="w-3.5 h-3.5 text-blue-200 shrink-0" />;
+    return <Check className="w-3 h-3 text-primary-foreground/60 shrink-0" />;
+  // delivered or read both show ✓✓ — no read receipt distinction yet
+  return <CheckCheck className="w-3.5 h-3.5 text-primary-foreground/70 shrink-0" />;
 }
 
 // ── Message bubble ────────────────────────────────────────────────────────────
