@@ -1,7 +1,15 @@
 import { eq, inArray } from "drizzle-orm";
-import { db, deviceTokensTable } from "@workspace/db";
+import { db, deviceTokensTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { isFcmConfigured, sendPushToTokens } from "./fcm";
+
+/**
+ * How long after the last heartbeat a recipient is still considered "active".
+ * The frontend heartbeat fires every 60 s when the tab is visible; if the app
+ * goes to the background the heartbeat stops, so after 90 s (1.5× interval)
+ * we treat the user as background/offline and send a push instead.
+ */
+const ACTIVE_THRESHOLD_MS = 90_000;
 
 /**
  * Notification service foundation.
@@ -43,6 +51,30 @@ export async function notifyUser(userId: number, payload: NotificationPayload): 
     logger.debug({ userId }, "notifyUser: no registered devices, skipping");
     return;
   }
+
+  // ── Online-presence guard ──────────────────────────────────────────────────
+  // Skip push when the recipient is actively using the app: they already
+  // receive new messages via the 4-second poll, so a push would duplicate it.
+  // "Active" means: isOnline flag is true AND the last heartbeat arrived within
+  // the threshold window.  Once the tab goes to the background the heartbeat
+  // stops, so after ACTIVE_THRESHOLD_MS the user is treated as background/
+  // offline and the push is sent.
+  const [recipient] = await db
+    .select({ isOnline: usersTable.isOnline, lastSeenAt: usersTable.lastSeenAt })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  if (recipient?.isOnline && recipient.lastSeenAt) {
+    const msSinceHeartbeat = Date.now() - recipient.lastSeenAt.getTime();
+    if (msSinceHeartbeat < ACTIVE_THRESHOLD_MS) {
+      logger.debug(
+        { userId, msSinceHeartbeat },
+        "notifyUser: recipient is active — skipping push to avoid duplicate",
+      );
+      return;
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   if (!isFcmConfigured()) {
     logger.info(
