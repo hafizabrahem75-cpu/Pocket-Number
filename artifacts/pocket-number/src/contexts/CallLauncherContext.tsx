@@ -10,6 +10,7 @@ import {
   useStartCall,
   useUpdateCallStatus,
   useGetCallHistory,
+  useGetContacts,
   getGetCallHistoryQueryKey,
   searchUsers,
   getUserById,
@@ -73,6 +74,10 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
   const { data: historyData } = useGetCallHistory(undefined, {
     query: { queryKey: getGetCallHistoryQueryKey(undefined), enabled: !!user, refetchInterval: 3000 },
   });
+
+  // Load contacts so we can apply V1 identity rule: show local name if saved,
+  // pocket number only otherwise — never the other user's account display name.
+  const { data: contacts } = useGetContacts();
 
   // Keep the caller's own view of activeCall.call in sync with the polled
   // history so it reflects remote status changes (e.g. the receiver
@@ -163,9 +168,16 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
         data: { status: "ongoing" },
       });
       const caller = await getUserById(call.callerId);
+      const callerLocalName = contacts?.find(
+        (c) => c.pocketNumber === caller.pocketNumber,
+      )?.localName;
       setActiveCall({
         call: updated,
-        peer: { peerId: caller.id, peerName: caller.name, peerPocketNumber: caller.pocketNumber },
+        peer: {
+          peerId: caller.id,
+          peerName: callerLocalName ?? caller.pocketNumber,
+          peerPocketNumber: caller.pocketNumber,
+        },
       });
     } catch {
       // Best-effort — if this fails the incoming overlay simply closes.
@@ -197,9 +209,12 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
       setError(null);
       try {
         const target = await searchUsers({ q: pocketNumber });
+        const targetLocalName = contacts?.find(
+          (c) => c.pocketNumber === target.pocketNumber,
+        )?.localName;
         await startCall({
           peerId: target.id,
-          peerName: target.name,
+          peerName: targetLocalName ?? target.pocketNumber,
           peerPocketNumber: target.pocketNumber,
         });
       } catch (err: any) {

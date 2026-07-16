@@ -622,7 +622,7 @@ export default function ConversationView({
   const handleRetry = (tempId: number) => {
     const entry = pendingMessages.find((p) => p.tempId === tempId);
     if (!entry) return;
-    const content = entry.message.content;
+    const content = entry.message.content ?? "";
 
     // Flip back to pending so the spinner shows again
     setPendingMessages((prev) =>

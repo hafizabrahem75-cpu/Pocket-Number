@@ -50,12 +50,14 @@ function Avatar({ name, unread }: { name: string; unread: number }) {
 
 function ConversationRow({
   conv,
+  displayName,
   onOpen,
 }: {
   conv: ConversationListItem;
+  displayName: string;
   onOpen: () => void;
 }) {
-  const { peerName, peerPocketNumber, unreadCount, lastMessage } = conv;
+  const { unreadCount, lastMessage } = conv;
   const hasUnread = unreadCount > 0;
 
   return (
@@ -63,11 +65,11 @@ function ConversationRow({
       onClick={onOpen}
       className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/30 active:bg-muted/50 transition-colors text-right border-b border-border last:border-0"
     >
-      <Avatar name={peerName} unread={unreadCount} />
+      <Avatar name={displayName} unread={unreadCount} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <p className={cn("font-semibold text-sm truncate", hasUnread ? "text-foreground" : "text-foreground/80")}>
-            {peerName}
+            {displayName}
           </p>
           <span className="text-[11px] text-muted-foreground shrink-0">
             {formatRelativeTime(lastMessage.createdAt)}
@@ -232,8 +234,15 @@ export default function MessagesTab({
   const { data, isLoading } = useGetInbox({
     query: { queryKey: getGetInboxQueryKey(), refetchInterval: 5_000, staleTime: 0 },
   });
+  const { data: contacts } = useGetContacts();
 
   const conversations = data?.conversations ?? [];
+
+  // Build pocket-number → local name map for V1 identity rule:
+  // show local contact name if saved, otherwise show pocket number only.
+  const contactNameByPN = new Map(
+    (contacts ?? []).map((c) => [c.pocketNumber, c.localName]),
+  );
 
   // Open a conversation requested from another page (contacts/search),
   // even when no prior messages exist between the two users.
@@ -279,13 +288,24 @@ export default function MessagesTab({
             </div>
           ) : (
             <div>
-              {conversations.map((conv) => (
+              {conversations.map((conv) => {
+                const displayName =
+                  contactNameByPN.get(conv.peerPocketNumber) ?? conv.peerPocketNumber;
+                return (
                 <ConversationRow
                   key={conv.peerId}
                   conv={conv}
-                  onOpen={() => setOpenConv(conv)}
+                  displayName={displayName}
+                  onOpen={() =>
+                    setOpenConv({
+                      peerId: conv.peerId,
+                      peerName: displayName,
+                      peerPocketNumber: conv.peerPocketNumber,
+                    })
+                  }
                 />
-              ))}
+              );
+              })}
             </div>
           )}
         </div>

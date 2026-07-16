@@ -17,7 +17,7 @@ export function IncomingCallOverlay() {
   if (!incomingCall) return null;
 
   const contactName = caller && contacts?.find((c) => c.pocketNumber === caller.pocketNumber)?.localName;
-  const displayName = contactName || caller?.name || "مكالمة واردة";
+  const displayName = contactName || caller?.pocketNumber || "مكالمة واردة";
   const letter = displayName.trim()[0]?.toUpperCase() ?? "؟";
 
   return (

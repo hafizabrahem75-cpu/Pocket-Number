@@ -70,7 +70,7 @@ function CallHistoryRow({
   const kind = getCallKind(call, myId);
 
   const displayName =
-    (peer && contactNameByPocketNumber.get(peer.pocketNumber)) || peer?.name || peer?.pocketNumber;
+    (peer && contactNameByPocketNumber.get(peer.pocketNumber)) || peer?.pocketNumber;
 
   const Icon = kind === "outgoing" ? PhoneOutgoing : kind === "missed" ? PhoneMissed : PhoneIncoming;
   const iconColor =
@@ -83,7 +83,7 @@ function CallHistoryRow({
     try {
       await startCall({
         peerId: peer.id,
-        peerName: displayName ?? peer.name,
+        peerName: displayName ?? peer.pocketNumber,
         peerPocketNumber: peer.pocketNumber,
       });
     } catch {
@@ -98,7 +98,7 @@ function CallHistoryRow({
     setExpanded(false);
     requestChat({
       peerId: peer.id,
-      peerName: displayName ?? peer.name,
+      peerName: displayName ?? peer.pocketNumber,
       peerPocketNumber: peer.pocketNumber,
     });
   };

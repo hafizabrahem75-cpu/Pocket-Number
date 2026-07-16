@@ -77,14 +77,18 @@ function ResultCard({ user }: { user: PublicUser }) {
   const isAlreadyAdded =
     (contacts?.some((c) => c.pocketNumber === user.pocketNumber) ?? false) || localAdded;
 
+  // V1 identity rule: show local contact name if saved; otherwise pocket number only.
+  const localName = contacts?.find((c) => c.pocketNumber === user.pocketNumber)?.localName;
+  const displayName = localName ?? user.pocketNumber;
+
   const handleMessage = () => {
-    requestChat({ peerId: user.id, peerName: user.name, peerPocketNumber: user.pocketNumber });
+    requestChat({ peerId: user.id, peerName: displayName, peerPocketNumber: user.pocketNumber });
     setLocation("/home");
   };
 
   const handleCall = async () => {
     try {
-      await startCall({ peerId: user.id, peerName: user.name, peerPocketNumber: user.pocketNumber });
+      await startCall({ peerId: user.id, peerName: displayName, peerPocketNumber: user.pocketNumber });
       setLocation("/home");
     } catch (err: any) {
       toast({
@@ -106,7 +110,7 @@ function ResultCard({ user }: { user: PublicUser }) {
           queryClient.invalidateQueries({
             queryKey: getSearchUsersQueryKey({ q: user.pocketNumber }),
           });
-          toast({ title: "تمت الإضافة", description: `${user.name} في جهات اتصالك` });
+          toast({ title: "تمت الإضافة", description: `${user.pocketNumber} في جهات اتصالك` });
         },
         onError: (err: any) => {
           toast({
@@ -126,7 +130,7 @@ function ResultCard({ user }: { user: PublicUser }) {
         <div className="relative">
           <div className="w-20 h-20 rounded-full bg-primary/15 border-4 border-background shadow-md flex items-center justify-center">
             <span className="text-3xl font-black text-primary">
-              {user.name.trim()[0]?.toUpperCase() ?? "؟"}
+              {displayName.trim()[0]?.toUpperCase() ?? "؟"}
             </span>
           </div>
           {/* Online dot on avatar */}
@@ -139,7 +143,7 @@ function ResultCard({ user }: { user: PublicUser }) {
         </div>
 
         <div className="text-center">
-          <p className="text-lg font-bold text-foreground">{user.name}</p>
+          <p className="text-lg font-bold text-foreground">{displayName}</p>
           <p
             className="text-sm font-mono text-primary font-semibold tracking-wider mt-0.5"
             dir="ltr"
@@ -216,7 +220,7 @@ function ResultCard({ user }: { user: PublicUser }) {
                 ) : (
                   <UserPlus className="w-5 h-5 ml-2" />
                 )}
-                إضافة إلى جهات الاتصال
+                حفظ في جهات الاتصال
               </Button>
             )}
           </>
