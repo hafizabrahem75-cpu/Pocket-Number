@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { attachSignalingServer } from "./ws/signaling";
+import { startCallTimeoutJob } from "./lib/callTimeouts";
 
 const rawPort = process.env["PORT"];
 
@@ -26,3 +27,4 @@ const server = app.listen(port, (err) => {
 });
 
 attachSignalingServer(server);
+startCallTimeoutJob();

@@ -1,4 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+
+/**
+ * How long the caller waits for an answer before auto-cancelling.
+ * Must match RINGING_TIMEOUT_MS in the backend callTimeouts.ts so that
+ * both sides converge on the same expiry at the same moment.
+ */
+const CALLER_RING_TIMEOUT_MS = 60_000;
 import {
   useStartCall,
   useUpdateCallStatus,
@@ -58,6 +65,7 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
   const [dismissedCallId, setDismissedCallId] = useState<number | null>(null);
   const startCallMutation = useStartCall();
   const updateStatusMutation = useUpdateCallStatus();
+  const callerRingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Poll call history for a ringing call placed by someone else to this user.
   // No WebSocket/push exists yet, so short polling mirrors the pattern already
@@ -94,6 +102,45 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
       if (terminalTimerRef.current) clearTimeout(terminalTimerRef.current);
     };
   }, [activeCall?.call.id, activeCall?.call.status]);
+
+  // ── Caller-side ring timeout ──────────────────────────────────────────────
+  // If this user placed the call and the receiver hasn't answered within
+  // CALLER_RING_TIMEOUT_MS, cancel the call automatically.  This mirrors the
+  // server-side sweep in callTimeouts.ts so the overlay clears promptly even
+  // if the server's next poll tick hasn't fired yet.
+  //
+  // We mark it "declined" rather than "missed" because the PATCH state machine
+  // only allows ringing → {ongoing, missed, declined}: the caller's cancellation
+  // is semantically a "declined" (withdrawal), while "missed" is reserved for
+  // server-side expiry from the receiver's perspective.
+  useEffect(() => {
+    if (callerRingTimerRef.current) {
+      clearTimeout(callerRingTimerRef.current);
+      callerRingTimerRef.current = null;
+    }
+
+    const isCaller = activeCall?.call.callerId === user?.id;
+    if (!activeCall || activeCall.call.status !== "ringing" || !isCaller) {
+      return;
+    }
+
+    callerRingTimerRef.current = setTimeout(() => {
+      // endCall() reads the current activeCall status and transitions
+      // ringing → declined, then optimistically clears the overlay.
+      endCall();
+    }, CALLER_RING_TIMEOUT_MS);
+
+    return () => {
+      if (callerRingTimerRef.current) {
+        clearTimeout(callerRingTimerRef.current);
+        callerRingTimerRef.current = null;
+      }
+    };
+  // endCall is stable (useCallback with no deps that change), so including it
+  // here doesn't cause spurious re-runs. user?.id only changes on login/logout.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCall?.call.id, activeCall?.call.status, user?.id]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const incomingCall = useMemo<CallItem | null>(() => {
     if (!user) return null;

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, desc, lt } from "drizzle-orm";
+import { eq, and, or, desc, lt, inArray } from "drizzle-orm";
 import { db, usersTable, callsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { notifyIncomingCall } from "../lib/notificationEvents";
@@ -53,6 +53,45 @@ router.post("/calls", requireAuth, async (req: AuthRequest, res): Promise<void> 
     res.status(404).json({ error: "المستخدم المستقبل غير موجود" });
     return;
   }
+
+  // ── Busy guard ─────────────────────────────────────────────────────────────
+  // Reject the new call if either participant is already in an active call
+  // (ringing or ongoing).  Checking both directions (caller/receiver columns)
+  // handles the case where a user initiated or received the previous call.
+  const ACTIVE_STATUSES = ["ringing", "ongoing"] as const;
+
+  const [receiverBusy] = await db
+    .select({ id: callsTable.id })
+    .from(callsTable)
+    .where(
+      and(
+        or(eq(callsTable.callerId, parsedReceiverId), eq(callsTable.receiverId, parsedReceiverId)),
+        inArray(callsTable.status, [...ACTIVE_STATUSES]),
+      ),
+    )
+    .limit(1);
+
+  if (receiverBusy) {
+    res.status(409).json({ error: "المستخدم المطلوب في مكالمة أخرى حالياً" });
+    return;
+  }
+
+  const [callerBusy] = await db
+    .select({ id: callsTable.id })
+    .from(callsTable)
+    .where(
+      and(
+        or(eq(callsTable.callerId, callerId), eq(callsTable.receiverId, callerId)),
+        inArray(callsTable.status, [...ACTIVE_STATUSES]),
+      ),
+    )
+    .limit(1);
+
+  if (callerBusy) {
+    res.status(409).json({ error: "أنت في مكالمة أخرى بالفعل" });
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   const [call] = await db
     .insert(callsTable)
