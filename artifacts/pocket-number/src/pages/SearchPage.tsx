@@ -255,7 +255,7 @@ export default function SearchPage() {
   );
 
   const handleSearch = () => {
-    const trimmed = query.trim().toUpperCase();
+    const trimmed = query.trim();
     if (!trimmed) return;
     setSubmitted(trimmed);
   };
@@ -282,14 +282,16 @@ export default function SearchPage() {
           <div className="flex gap-2 mt-4">
             <Input
               ref={inputRef}
-              placeholder="710000001"
+              placeholder="+967 764000001"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               dir="ltr"
               className="flex-1 font-mono text-sm h-11 rounded-xl"
               autoFocus
-              autoCapitalize="characters"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
             />
             <Button
               onClick={handleSearch}
@@ -318,9 +320,9 @@ export default function SearchPage() {
               <div>
                 <p className="font-semibold text-foreground mb-1">ابحث برقم الجيب</p>
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
-                  أدخل الرقم المكون من 9 أرقام مثل{" "}
+                  أدخل الرقم الكامل بما فيه رمز الدولة، مثل{" "}
                   <span className="font-mono font-bold text-foreground" dir="ltr">
-                    710000001
+                    +967 764000001
                   </span>
                 </p>
               </div>

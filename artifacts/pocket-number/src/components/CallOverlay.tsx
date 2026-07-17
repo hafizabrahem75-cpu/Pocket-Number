@@ -1,4 +1,4 @@
-import { PhoneOff, Mic, MicOff, Volume2, VolumeX, SignalHigh, SignalMedium, SignalLow } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Volume2, VolumeX, SignalHigh, SignalMedium, SignalLow, X } from "lucide-react";
 import { useCallLauncher } from "@/contexts/CallLauncherContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWebRTCCall } from "@/hooks/useWebRTCCall";
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  * itself is still owned entirely by CallLauncherContext + the REST API.
  */
 export function CallOverlay() {
-  const { activeCall, endCall } = useCallLauncher();
+  const { activeCall, endCall, clearCall } = useCallLauncher();
   const { user, token } = useAuth();
 
   const {
@@ -68,7 +68,14 @@ export function CallOverlay() {
         )}
       >
         <div className="flex flex-col items-center gap-3 mt-10">
-          <span className="text-primary-foreground/80 text-sm font-medium">{statusLabel}</span>
+          <span
+            className={cn(
+              "font-medium text-center",
+              isTerminal ? "text-white text-base font-bold" : "text-primary-foreground/80 text-sm",
+            )}
+          >
+            {statusLabel}
+          </span>
           <div className="w-28 h-28 rounded-full bg-white/15 border-4 border-white/20 flex items-center justify-center">
             <span className="text-5xl font-black text-white">{letter}</span>
           </div>
@@ -122,14 +129,26 @@ export function CallOverlay() {
             </div>
           )}
 
-          {/* End-call button — always visible while the call isn't already over. */}
+          {/* End-call button — visible while the call isn't already over.
+              Label switches: "إلغاء" when still ringing, "إنهاء" once connected. */}
           {!isTerminal && (
             <button
               onClick={handleHangUp}
-              aria-label="إنهاء الاتصال"
+              aria-label={displayState === "calling" ? "إلغاء الاتصال" : "إنهاء الاتصال"}
               className="w-16 h-16 rounded-full bg-destructive flex items-center justify-center shadow-lg active:scale-95 transition-transform"
             >
               <PhoneOff className="w-7 h-7 text-white" />
+            </button>
+          )}
+
+          {/* Dismiss button — tap to close immediately once the call has ended. */}
+          {isTerminal && (
+            <button
+              onClick={clearCall}
+              aria-label="إغلاق"
+              className="w-16 h-16 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <X className="w-7 h-7 text-white" />
             </button>
           )}
         </div>

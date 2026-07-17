@@ -37,7 +37,20 @@ function formatDuration(startIso: string, endIso: string) {
   const seconds = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000));
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+  // Pad both parts so the format matches the live call timer (MM:SS).
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/** Arabic sub-label for a call row — describes what happened from the current user's perspective. */
+function getCallKindLabel(call: CallItem, myId: number): string {
+  if (call.callerId === myId) {
+    // Outgoing call: don't reveal whether the receiver declined vs. didn't pick up.
+    return call.status === "ended" ? "مكالمة صادرة" : "لم يُجب";
+  }
+  // Incoming calls
+  if (call.status === "declined") return "مرفوضة";
+  if (call.status === "missed") return "فائتة";
+  return "مكالمة واردة";
 }
 
 type CallKind = "incoming" | "outgoing" | "missed";
@@ -133,7 +146,9 @@ function CallHistoryRow({
               {displayName ?? "مستخدم غير معروف"}
             </p>
           )}
-          <p className="text-xs text-muted-foreground mt-0.5">{formatCallDate(call.startTime)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {getCallKindLabel(call, myId)} · {formatCallDate(call.startTime)}
+          </p>
         </div>
 
         {call.endTime && call.status === "ended" && (

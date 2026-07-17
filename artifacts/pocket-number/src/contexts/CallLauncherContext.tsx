@@ -23,7 +23,7 @@ import { isTerminalCallStatus } from "@/lib/callDisplay";
  * before the overlay auto-closes — long enough to read, short enough to
  * feel responsive. Purely a UI timing concern; the REST call lifecycle
  * itself is unaffected. */
-const TERMINAL_STATE_DISPLAY_MS = 1600;
+const TERMINAL_STATE_DISPLAY_MS = 2500;
 
 /** Minimal identity needed to place a call. */
 export interface CallPeer {
@@ -46,6 +46,8 @@ interface CallLauncherState {
   startCallByPocketNumber: (pocketNumber: string) => Promise<void>;
   /** Hang up the active call (declines if still ringing, ends if ongoing) and clears it. */
   endCall: () => void;
+  /** Dismiss the overlay immediately (safe to call only after the call has reached a terminal state). */
+  clearCall: () => void;
   isStarting: boolean;
   error: string | null;
   clearError: () => void;
@@ -239,6 +241,7 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
   }, [updateStatusMutation]);
 
   const clearError = useCallback(() => setError(null), []);
+  const clearCall = useCallback(() => setActiveCall(null), []);
 
   return (
     <CallLauncherContext.Provider
@@ -247,6 +250,7 @@ export function CallLauncherProvider({ children }: { children: ReactNode }) {
         startCall,
         startCallByPocketNumber,
         endCall,
+        clearCall,
         isStarting: startCallMutation.isPending,
         error,
         clearError,

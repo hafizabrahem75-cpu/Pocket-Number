@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Delete } from "lucide-react";
+import { Phone, Delete, Loader2 } from "lucide-react";
 import { useCallLauncher } from "@/contexts/CallLauncherContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ const KEYS = [
   ["1", "2", "3"],
   ["4", "5", "6"],
   ["7", "8", "9"],
-  ["", "0", ""],
+  ["+", "0", ""],
 ];
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -90,7 +90,11 @@ export default function CallsTab() {
             aria-label="اتصال"
             className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
           >
-            <Phone className="w-6 h-6 text-white" />
+            {isStarting ? (
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
+            ) : (
+              <Phone className="w-6 h-6 text-white" />
+            )}
           </button>
           <div className="w-11 h-11" />
         </div>

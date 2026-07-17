@@ -19,6 +19,7 @@ export type CallDisplayState =
   | "reconnecting"
   | "ended"
   | "missed"
+  | "no-answer" // caller's view when the receiver didn't pick up (server-side "missed")
   | "declined"
   | "busy";
 
@@ -38,7 +39,9 @@ export function getCallDisplayState(params: {
   const { callStatus, isCaller, audioState } = params;
 
   if (callStatus === "ended") return "ended";
-  if (callStatus === "missed") return "missed";
+  // "missed" from the caller's perspective means no-one answered — use a
+  // separate label so the caller doesn't see the receiver's "مكالمة فائتة".
+  if (callStatus === "missed") return isCaller ? "no-answer" : "missed";
   if (callStatus === "declined") return "declined";
   if (callStatus === "ringing") return isCaller ? "calling" : "ringing";
 
@@ -51,12 +54,13 @@ export function getCallDisplayState(params: {
 
 const LABELS: Record<CallDisplayState, string> = {
   calling: "يتصل…",
-  ringing: "يرن…",
+  ringing: "مكالمة واردة",
   connecting: "جارٍ الاتصال…",
   connected: "جارية الآن",
   reconnecting: "إعادة الاتصال…",
   ended: "انتهت المكالمة",
   missed: "مكالمة فائتة",
+  "no-answer": "لم يُجب",
   declined: "تم رفض المكالمة",
   busy: "الخط مشغول",
 };

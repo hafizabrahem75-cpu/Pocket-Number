@@ -151,7 +151,7 @@ export default function Profile() {
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-2 text-primary-foreground/80">
                   <Smartphone className="w-5 h-5" />
-                  <span className="font-medium text-sm">رقمك الافتراضي</span>
+                  <span className="font-medium text-sm">رقم الجيب</span>
                 </div>
                 <div className="flex items-end justify-between">
                   <div
