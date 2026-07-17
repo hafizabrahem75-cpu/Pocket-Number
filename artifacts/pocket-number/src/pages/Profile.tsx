@@ -1,6 +1,13 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetMe, useUpdateMe } from "@workspace/api-client-react";
@@ -34,6 +41,7 @@ export default function Profile() {
 
   const displayUser = user || initialUser;
   const [copied, setCopied] = useState(false);
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
 
   // Edit-name state
   const [editingName, setEditingName] = useState(false);
@@ -296,7 +304,15 @@ export default function Profile() {
               </div>
 
               {/* Verified */}
-              <div className="p-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800">
+              <div
+                className={cn(
+                  "p-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800",
+                  !displayUser.isVerified && "cursor-pointer active:bg-muted/40 transition-colors",
+                )}
+                onClick={() => { if (!displayUser.isVerified) setVerifyDialogOpen(true); }}
+                role={!displayUser.isVerified ? "button" : undefined}
+                aria-haspopup={!displayUser.isVerified ? "dialog" : undefined}
+              >
                 <div
                   className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
@@ -342,6 +358,27 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* Verification info dialog — shown when unverified user taps the badge */}
+      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <DialogContent className="max-w-[320px] rounded-2xl text-center" dir="rtl">
+          <DialogHeader>
+            <div className="mx-auto mb-3 w-12 h-12 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 flex items-center justify-center">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-center text-base">التحقق من الحساب</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            سيتم تفعيل التحقق من الحساب عبر البريد الإلكتروني في إصدار قريب.
+          </p>
+          <DialogFooter className="mt-2">
+            <Button className="w-full" onClick={() => setVerifyDialogOpen(false)}>
+              حسنًا
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </MobileLayout>
   );
 }
