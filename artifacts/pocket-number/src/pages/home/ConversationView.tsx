@@ -5,6 +5,7 @@ import {
   useGetMessageThread,
   useSendMessage,
   useDeleteMessage,
+  useHideMessage,
   useUpdateMessageStatus,
   useGetUserById,
   getGetUserByIdQueryKey,
@@ -15,7 +16,7 @@ import {
 import type { MessageItem } from "@workspace/api-client-react";
 import type { ChatTarget } from "@/contexts/ChatLauncherContext";
 import { useCallLauncher } from "@/contexts/CallLauncherContext";
-import { ChevronRight, Send, Loader2, Trash2, Check, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw, X, Phone } from "lucide-react";
+import { ChevronRight, Send, Loader2, Trash2, Check, CheckCheck, Clock, ArrowDown, AlertCircle, RotateCcw, X, Phone, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -271,11 +272,16 @@ function DayDivider({ label }: { label: string }) {
 
 function MessageActionSheet({
   open,
+  canRetract,
   onRetract,
+  onHide,
   onClose,
 }: {
   open: boolean;
+  /** Whether the "Retract" option should be shown (sender-only, before read). */
+  canRetract: boolean;
   onRetract: () => void;
+  onHide: () => void;
   onClose: () => void;
 }) {
   // Close on Escape
@@ -306,16 +312,30 @@ function MessageActionSheet({
         </div>
 
         <div className="px-4 pt-2 pb-4 space-y-1">
-          {/* Retract action */}
+          {/* Retract action — sender only, before read */}
+          {canRetract && (
+            <button
+              onClick={() => {
+                onClose();
+                onRetract();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-destructive hover:bg-destructive/8 active:bg-destructive/15 transition-colors text-sm font-medium"
+            >
+              <Trash2 className="w-4 h-4 shrink-0" />
+              <span>سحب الرسالة للجميع</span>
+            </button>
+          )}
+
+          {/* Delete for me — always available */}
           <button
             onClick={() => {
               onClose();
-              onRetract();
+              onHide();
             }}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-destructive hover:bg-destructive/8 active:bg-destructive/15 transition-colors text-sm font-medium"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-destructive/80 hover:bg-destructive/8 active:bg-destructive/15 transition-colors text-sm font-medium"
           >
-            <Trash2 className="w-4 h-4 shrink-0" />
-            <span>سحب الرسالة</span>
+            <EyeOff className="w-4 h-4 shrink-0" />
+            <span>حذف من طرفي فقط</span>
           </button>
 
           {/* Divider */}
@@ -357,8 +377,12 @@ export default function ConversationView({
   const markedReadIds = useRef(new Set<number>());
 
   // ── Action sheet state ────────────────────────────────────────────────────
-  // Stores the id of the message the user long-pressed; null = sheet closed.
-  const [actionSheetMsgId, setActionSheetMsgId] = useState<number | null>(null);
+  // Stores the selected message's id and whether "Retract" should be offered.
+  // null = sheet closed.
+  const [actionSheetTarget, setActionSheetTarget] = useState<{
+    id: number;
+    canRetract: boolean;
+  } | null>(null);
 
   // ── Optimistic send state ──────────────────────────────────────────────────
   // Each entry represents one in-flight (or just-confirmed) send. `message.id`
@@ -672,7 +696,7 @@ export default function ConversationView({
     }
   };
 
-  // ── Soft-delete (retract) ─────────────────────────────────────────────────
+  // ── Soft-delete (retract for everyone) ───────────────────────────────────
   const del = useDeleteMessage();
 
   const handleRetract = (msgId: number) => {
@@ -691,6 +715,31 @@ export default function ConversationView({
             variant: "destructive",
             title: "تعذّر السحب",
             description: err?.error ?? "ربما قُرئت الرسالة بالفعل",
+          });
+        },
+      },
+    );
+  };
+
+  // ── Hide for me only ──────────────────────────────────────────────────────
+  const hide = useHideMessage();
+
+  const handleHide = (msgId: number) => {
+    hide.mutate(
+      { id: msgId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getGetMessageThreadQueryKey({ recipientId: peer.peerId }),
+          });
+          queryClient.invalidateQueries({ queryKey: getGetInboxQueryKey() });
+          toast({ title: "تم حذف الرسالة من طرفك" });
+        },
+        onError: () => {
+          toast({
+            variant: "destructive",
+            title: "تعذّر الحذف",
+            description: "حدث خطأ غير متوقع، حاول مجدداً",
           });
         },
       },
@@ -782,9 +831,10 @@ export default function ConversationView({
                   const isMine = msg.senderId === myId;
                   const isFailed = failedTempIds.has(msg.id);
                   const isPending = msg.id < 0 && !isFailed;
-                  // Long-press is available on own messages that are still retractable
-                  const canLongPress =
-                    isMine && !isPending && !isFailed && !msg.deletedAt && msg.status !== "read";
+                  // Long-press opens the action sheet for any confirmed message.
+                  // "Retract" is a sub-condition (sender-only, before read).
+                  const canLongPress = !isPending && !isFailed && !msg.deletedAt;
+                  const canRetract = isMine && !msg.deletedAt && msg.status !== "read";
                   return (
                     <MessageBubble
                       key={msg.id}
@@ -792,7 +842,11 @@ export default function ConversationView({
                       isMine={isMine}
                       isPending={isPending}
                       isFailed={isFailed}
-                      onLongPress={canLongPress ? () => setActionSheetMsgId(msg.id) : undefined}
+                      onLongPress={
+                        canLongPress
+                          ? () => setActionSheetTarget({ id: msg.id, canRetract })
+                          : undefined
+                      }
                       onRetry={isFailed ? () => handleRetry(msg.id) : undefined}
                     />
                   );
@@ -843,11 +897,15 @@ export default function ConversationView({
 
       {/* Message action sheet */}
       <MessageActionSheet
-        open={actionSheetMsgId !== null}
+        open={actionSheetTarget !== null}
+        canRetract={actionSheetTarget?.canRetract ?? false}
         onRetract={() => {
-          if (actionSheetMsgId !== null) handleRetract(actionSheetMsgId);
+          if (actionSheetTarget) handleRetract(actionSheetTarget.id);
         }}
-        onClose={() => setActionSheetMsgId(null)}
+        onHide={() => {
+          if (actionSheetTarget) handleHide(actionSheetTarget.id);
+        }}
+        onClose={() => setActionSheetTarget(null)}
       />
     </div>
   );

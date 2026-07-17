@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, desc, lt, gt, sql, inArray } from "drizzle-orm";
-import { db, usersTable, messagesTable } from "@workspace/db";
+import { eq, and, or, desc, lt, sql, inArray } from "drizzle-orm";
+import { db, usersTable, messagesTable, messageHiddenTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { notifyNewMessage } from "../lib/notificationEvents";
 
@@ -105,8 +105,14 @@ router.get(
             and(eq(messagesTable.senderId, myId), eq(messagesTable.recipientId, otherId)),
             and(eq(messagesTable.senderId, otherId), eq(messagesTable.recipientId, myId)),
           ),
-          // Only non-deleted messages
+          // Only non-retracted messages
           sql`${messagesTable.deletedAt} IS NULL`,
+          // Exclude messages this user has hidden ("Delete for me")
+          sql`NOT EXISTS (
+            SELECT 1 FROM message_hidden mh
+            WHERE mh.message_id = ${messagesTable.id}
+              AND mh.user_id = ${myId}
+          )`,
           // Pagination cursor
           beforeId ? lt(messagesTable.id, beforeId) : undefined,
         ),
@@ -175,6 +181,10 @@ router.get("/messages/inbox", requireAuth, async (req: AuthRequest, res): Promis
       WHERE
         (m.sender_id = ${myId} OR m.recipient_id = ${myId})
         AND m.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM message_hidden mh
+          WHERE mh.message_id = m.id AND mh.user_id = ${myId}
+        )
     )
     SELECT
       r.id,
@@ -274,6 +284,50 @@ router.patch(
       .returning();
 
     res.json(serializeMessage(updated));
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /messages/:id/hide — "Delete for me" (any participant, any status)
+// ---------------------------------------------------------------------------
+// Inserts a per-user tombstone into message_hidden.  The message row itself
+// is untouched: the sender sees it normally, delivery/read status is preserved,
+// and no other user is affected.  The operation is idempotent.
+router.post(
+  "/messages/:id/hide",
+  requireAuth,
+  async (req: AuthRequest, res): Promise<void> => {
+    const myId = req.userId!;
+    const msgId = parsePositiveInt(String(req.params.id ?? ""));
+
+    if (!msgId) {
+      res.status(400).json({ error: "معرّف الرسالة غير صحيح" });
+      return;
+    }
+
+    // Verify the message exists and the caller is a participant (sender or recipient).
+    const [msg] = await db
+      .select({ id: messagesTable.id })
+      .from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.id, msgId),
+          or(eq(messagesTable.senderId, myId), eq(messagesTable.recipientId, myId)),
+        ),
+      );
+
+    if (!msg) {
+      res.status(404).json({ error: "الرسالة غير موجودة أو غير مصرّح لك بإخفائها" });
+      return;
+    }
+
+    // Idempotent — silently ignore if the row already exists.
+    await db
+      .insert(messageHiddenTable)
+      .values({ messageId: msgId, userId: myId })
+      .onConflictDoNothing();
+
+    res.json({ success: true });
   },
 );
 

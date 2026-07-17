@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 import { usersTable } from "./users";
@@ -107,3 +108,38 @@ export const messagesTable = pgTable(
 
 export type Message = typeof messagesTable.$inferSelect;
 export type NewMessage = typeof messagesTable.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Per-user message tombstone — "Delete for me"
+// ---------------------------------------------------------------------------
+/**
+ * Records that a specific user has hidden a specific message from their own
+ * view. The message row itself is never modified, so:
+ *   - The sender still sees the original message.
+ *   - Delivery and read status are fully preserved.
+ *   - Other participants are unaffected.
+ *
+ * Rows are automatically removed when the message or user is deleted (CASCADE).
+ */
+export const messageHiddenTable = pgTable(
+  "message_hidden",
+  {
+    messageId: integer("message_id")
+      .notNull()
+      .references(() => messagesTable.id, { onDelete: "cascade" }),
+
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+
+    /** When the user hid the message. */
+    hiddenAt: timestamp("hidden_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.messageId, table.userId] }),
+    // Fast per-user lookup — used in every conversation/inbox query
+    index("idx_message_hidden_user").on(table.userId),
+  ],
+);
+
+export type MessageHidden = typeof messageHiddenTable.$inferSelect;
