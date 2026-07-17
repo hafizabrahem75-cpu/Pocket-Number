@@ -33,7 +33,29 @@ interface UseWebRTCCallOptions {
   getToken: () => string | null;
 }
 
-const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+const STUN_ONLY: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+
+/**
+ * Fetch the ICE server list from the backend. The endpoint returns STUN +
+ * TURN (UDP/TCP/TLS) when TURN credentials are configured, or STUN-only when
+ * they are not. Falls back to STUN-only on any network / auth error so a
+ * call can still be attempted on friendly NATs even if the fetch fails.
+ */
+async function fetchIceServers(token: string): Promise<RTCIceServer[]> {
+  try {
+    const res = await fetch(`${window.location.origin}/api/calls/ice-config`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return STUN_ONLY;
+    const data = (await res.json()) as { iceServers?: RTCIceServer[] };
+    if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+      return data.iceServers;
+    }
+    return STUN_ONLY;
+  } catch {
+    return STUN_ONLY;
+  }
+}
 
 // How long a "disconnected" connection is given to recover on its own before
 // an ICE restart is attempted, and the overall grace window for retries
@@ -172,7 +194,10 @@ export function useWebRTCCall({ call, peerId, myUserId, getToken }: UseWebRTCCal
         return;
       }
 
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const iceServers = await fetchIceServers(token);
+      if (cancelled) return;
+
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));

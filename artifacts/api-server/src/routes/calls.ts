@@ -15,6 +15,34 @@ function parsePositiveInt(raw: string | undefined): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+// ---------------------------------------------------------------------------
+// GET /calls/ice-config — return RTCIceServer[] for WebRTC peer connections.
+//
+// Reads TURN_HOST, TURN_USERNAME, TURN_CREDENTIAL from the environment and
+// builds a full ICE config (STUN + TURN UDP + TURN TCP + TURNS TLS). If the
+// TURN secrets are absent the response contains STUN only, which lets the
+// frontend degrade gracefully rather than failing outright.
+// ---------------------------------------------------------------------------
+router.get("/calls/ice-config", requireAuth, (_req: AuthRequest, res): void => {
+  const host = process.env.TURN_HOST;
+  const username = process.env.TURN_USERNAME;
+  const credential = process.env.TURN_CREDENTIAL;
+
+  const iceServers: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+  ];
+
+  if (host && username && credential) {
+    iceServers.push(
+      { urls: `turn:${host}:3478?transport=udp`, username, credential },
+      { urls: `turn:${host}:3478?transport=tcp`, username, credential },
+      { urls: `turns:${host}:5349?transport=tcp`, username, credential },
+    );
+  }
+
+  res.json({ iceServers });
+});
+
 // Forward-only lifecycle: ringing -> {ongoing, missed, declined}; ongoing -> ended
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   ringing: ["ongoing", "missed", "declined"],
