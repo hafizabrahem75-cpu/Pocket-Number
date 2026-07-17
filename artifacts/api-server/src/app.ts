@@ -6,6 +6,12 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Replit routes traffic through its own proxy, so Express must trust the first
+// hop in X-Forwarded-For to resolve the real client IP. Without this,
+// express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and the limiter
+// does not enforce correctly.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
