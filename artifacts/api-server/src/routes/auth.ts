@@ -22,7 +22,14 @@ import {
 import { signToken } from "../lib/jwt";
 import { generateOtpCode, getOtpExpiry, sendOtpEmail } from "../lib/otp";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
-import { authRateLimit } from "../middlewares/rateLimit";
+import {
+  registerRateLimit,
+  loginRateLimit,
+  verifyOtpRateLimit,
+  resendOtpRateLimit,
+  forgotPasswordRateLimit,
+  resetPasswordRateLimit,
+} from "../middlewares/rateLimit";
 import { getPocketNumberConfig } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -76,7 +83,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
 
 // ── POST /auth/register ───────────────────────────────────────────────────────
 
-router.post("/auth/register", authRateLimit, async (req, res): Promise<void> => {
+router.post("/auth/register", registerRateLimit, async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -130,7 +137,7 @@ router.post("/auth/register", authRateLimit, async (req, res): Promise<void> => 
 
 // ── POST /auth/verify-otp ────────────────────────────────────────────────────
 
-router.post("/auth/verify-otp", authRateLimit, async (req, res): Promise<void> => {
+router.post("/auth/verify-otp", verifyOtpRateLimit, async (req, res): Promise<void> => {
   const parsed = VerifyOtpBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -184,7 +191,7 @@ router.post("/auth/verify-otp", authRateLimit, async (req, res): Promise<void> =
 
 // ── POST /auth/resend-otp ────────────────────────────────────────────────────
 
-router.post("/auth/resend-otp", authRateLimit, async (req, res): Promise<void> => {
+router.post("/auth/resend-otp", resendOtpRateLimit, async (req, res): Promise<void> => {
   const parsed = ResendOtpBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -231,7 +238,7 @@ router.post("/auth/resend-otp", authRateLimit, async (req, res): Promise<void> =
 
 // ── POST /auth/login ─────────────────────────────────────────────────────────
 
-router.post("/auth/login", authRateLimit, async (req, res): Promise<void> => {
+router.post("/auth/login", loginRateLimit, async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -372,7 +379,7 @@ router.patch("/auth/password", requireAuth, async (req: AuthRequest, res): Promi
 
 // ── POST /auth/forgot-password ────────────────────────────────────────────────
 
-router.post("/auth/forgot-password", authRateLimit, async (req, res): Promise<void> => {
+router.post("/auth/forgot-password", forgotPasswordRateLimit, async (req, res): Promise<void> => {
   const parsed = ForgotPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -424,7 +431,7 @@ router.post("/auth/forgot-password", authRateLimit, async (req, res): Promise<vo
 
 // ── POST /auth/reset-password ─────────────────────────────────────────────────
 
-router.post("/auth/reset-password", authRateLimit, async (req, res): Promise<void> => {
+router.post("/auth/reset-password", resetPasswordRateLimit, async (req, res): Promise<void> => {
   const parsed = ResetPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
