@@ -25,6 +25,9 @@ export type CallDisplayState =
 
 export type NetworkQuality = "good" | "fair" | "poor";
 
+/** How long (ms) the terminal-state overlay stays visible before auto-closing. */
+export const TERMINAL_STATE_DISPLAY_MS = 2500;
+
 const TERMINAL_CALL_STATUSES = new Set<CallItem["status"]>(["ended", "missed", "declined"]);
 
 export function isTerminalCallStatus(status: CallItem["status"]): boolean {

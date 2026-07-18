@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { PhoneOff, Mic, MicOff, Volume2, VolumeX, SignalHigh, SignalMedium, SignalLow, X } from "lucide-react";
 import { useCallLauncher } from "@/contexts/CallLauncherContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +8,7 @@ import {
   getCallStatusLabel,
   formatCallDuration,
   isTerminalCallStatus,
+  TERMINAL_STATE_DISPLAY_MS,
   NETWORK_QUALITY_LABEL,
 } from "@/lib/callDisplay";
 import { cn } from "@/lib/utils";
@@ -40,11 +42,29 @@ export function CallOverlay() {
     getToken: () => token,
   });
 
+  // Must be derived before the early return so the effect below runs unconditionally.
+  const isTerminal = activeCall ? isTerminalCallStatus(activeCall.call.status) : false;
+
+  // Auto-dismiss after TERMINAL_STATE_DISPLAY_MS when a terminal state is reached.
+  // Cancelled automatically if the user taps ✕ first (clearCall removes activeCall,
+  // isTerminal flips to false, and the effect cleanup fires).
+  const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isTerminal) {
+      autoCloseTimerRef.current = setTimeout(clearCall, TERMINAL_STATE_DISPLAY_MS);
+    }
+    return () => {
+      if (autoCloseTimerRef.current !== null) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+    };
+  }, [isTerminal, clearCall]);
+
   if (!activeCall) return null;
 
   const { peer, call } = activeCall;
   const isCaller = call.callerId === user?.id;
-  const isTerminal = isTerminalCallStatus(call.status);
   const displayState = getCallDisplayState({ callStatus: call.status, isCaller, audioState });
   const statusLabel = micError ? "تعذّر الوصول إلى الميكروفون" : getCallStatusLabel(displayState);
   const letter = peer.peerName.trim()[0]?.toUpperCase() ?? "؟";
