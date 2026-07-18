@@ -22,7 +22,7 @@ export default function VerifyOtp() {
   const resendMutation = useResendOtp();
 
   useEffect(() => {
-    const savedEmail = sessionStorage.getItem("pn_pending_email");
+    const savedEmail = localStorage.getItem("pn_pending_email");
     if (!savedEmail) {
       setLocation("/register");
       return;
@@ -30,7 +30,7 @@ export default function VerifyOtp() {
     setEmail(savedEmail);
 
     // Restore dev OTP if present (set by Register page)
-    const savedDevOtp = sessionStorage.getItem("pn_dev_otp");
+    const savedDevOtp = localStorage.getItem("pn_dev_otp");
     if (savedDevOtp) setDevOtp(savedDevOtp);
 
     startTimer();
@@ -56,8 +56,8 @@ export default function VerifyOtp() {
 
     verifyMutation.mutate({ data: { email, code: otp } }, {
       onSuccess: (data) => {
-        sessionStorage.removeItem("pn_pending_email");
-        sessionStorage.removeItem("pn_dev_otp");
+        localStorage.removeItem("pn_pending_email");
+        localStorage.removeItem("pn_dev_otp");
         setDevOtp(null);
         login(data.token, data.user);
         setLocation("/home");
@@ -86,10 +86,10 @@ export default function VerifyOtp() {
         // Update or clear dev OTP banner based on server response
         if (response.devOtp) {
           setDevOtp(response.devOtp);
-          sessionStorage.setItem("pn_dev_otp", response.devOtp);
+          localStorage.setItem("pn_dev_otp", response.devOtp);
         } else {
           setDevOtp(null);
-          sessionStorage.removeItem("pn_dev_otp");
+          localStorage.removeItem("pn_dev_otp");
         }
         toast({
           title: "تم إرسال الرمز",
