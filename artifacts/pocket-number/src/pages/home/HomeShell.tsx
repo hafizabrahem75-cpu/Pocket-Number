@@ -5,6 +5,7 @@ import { useChatLauncher } from "@/contexts/ChatLauncherContext";
 import { useLocation } from "wouter";
 import { Phone, MessageCircle, Users, Clock, Search, MoreVertical, User, Settings } from "lucide-react";
 import { useHeartbeatPing } from "@/hooks/useHeartbeatPing";
+import { useGetInbox, useGetCallHistory } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -33,6 +34,18 @@ export default function HomeShell() {
   const { pendingTarget, consumePendingTarget } = useChatLauncher();
   const [, setLocation] = useLocation();
   useHeartbeatPing();
+
+  // Badge counts — derived from existing queries; no new polling or network requests.
+  const { data: inboxData } = useGetInbox();
+  const { data: callHistoryData } = useGetCallHistory();
+
+  const unreadMessages = (inboxData?.conversations ?? []).reduce(
+    (sum, conv) => sum + conv.unreadCount,
+    0,
+  );
+  const missedCalls = (callHistoryData?.calls ?? []).filter(
+    (call) => call.status === "missed" && call.receiverId === user?.id,
+  ).length;
 
   // If another page (contacts/search) requested a chat, switch to the messages tab
   // so MessagesTab can pick up `pendingTarget` and open the conversation.
@@ -125,6 +138,10 @@ export default function HomeShell() {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const badgeCount =
+              tab.id === "messages" ? unreadMessages
+              : tab.id === "calls" ? missedCalls
+              : 0;
             return (
               <button
                 key={tab.id}
@@ -134,10 +151,17 @@ export default function HomeShell() {
                   isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon
-                  className={cn("w-5 h-5", isActive && "stroke-[2.5px]")}
-                  strokeWidth={isActive ? 2.5 : 1.75}
-                />
+                <span className="relative inline-flex">
+                  <Icon
+                    className={cn("w-5 h-5", isActive && "stroke-[2.5px]")}
+                    strokeWidth={isActive ? 2.5 : 1.75}
+                  />
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[9px] font-bold leading-4 flex items-center justify-center tabular-nums">
+                      {badgeCount > 99 ? "99+" : badgeCount}
+                    </span>
+                  )}
+                </span>
                 <span className={cn("text-[9px] font-medium", isActive && "font-bold")}>
                   {tab.label}
                 </span>
