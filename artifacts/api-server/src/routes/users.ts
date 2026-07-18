@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, or, and } from "drizzle-orm";
 import { db, usersTable, friendshipsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { normalizePhoneNumber } from "../lib/phone";
 
 const router: IRouter = Router();
 
@@ -17,12 +18,19 @@ router.post("/users/heartbeat", requireAuth, async (req: AuthRequest, res): Prom
 
 // GET /users/search?q=710000001
 router.get("/users/search", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  const q = (req.query.q as string | undefined)?.trim().toUpperCase();
+  const rawQ = (req.query.q as string | undefined)?.trim();
 
-  if (!q) {
+  if (!rawQ) {
     res.status(400).json({ error: "يرجى إدخال رقم الهاتف للبحث" });
     return;
   }
+
+  // Normalize the input so that all of these reach the same record:
+  //   +967764000001 | +967 764000001 | 967764000001 | 0764000001
+  // Falls back to the raw value (uppercased) so bare PN-format strings
+  // entered directly still work without conversion.
+  const normalized = await normalizePhoneNumber(rawQ);
+  const q = normalized?.canonical ?? rawQ.toUpperCase();
 
   const [found] = await db
     .select({

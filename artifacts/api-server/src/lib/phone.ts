@@ -36,8 +36,8 @@ export async function normalizePhoneNumber(raw: string): Promise<NormalizedPhone
     // "+967 76XXXXXXX" or "967 76XXXXXXX"
     local = digits.slice(ccDigits.length);
   } else {
-    // Local-only, e.g. "76XXXXXXX"
-    local = digits;
+    // Local-only, e.g. "76XXXXXXX" or "0764000001" (trunk prefix stripped)
+    local = digits.startsWith("0") ? digits.slice(1) : digits;
   }
 
   // Basic sanity check on local number length (covers old 9-digit prefixes
