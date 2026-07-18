@@ -44,7 +44,7 @@ export default function ResetPassword() {
   });
 
   useEffect(() => {
-    const savedEmail = sessionStorage.getItem("pn_reset_email");
+    const savedEmail = localStorage.getItem("pn_reset_email");
     if (!savedEmail) {
       // No email in session — user landed here directly, send back to start
       setLocation("/forgot-password");
@@ -52,7 +52,7 @@ export default function ResetPassword() {
     }
     setEmail(savedEmail);
 
-    const savedDevCode = sessionStorage.getItem("pn_reset_dev_code");
+    const savedDevCode = localStorage.getItem("pn_reset_dev_code");
     if (savedDevCode) setDevCode(savedDevCode);
   }, [setLocation]);
 
@@ -62,8 +62,8 @@ export default function ResetPassword() {
       {
         onSuccess: () => {
           // Clean up session storage — the flow is complete
-          sessionStorage.removeItem("pn_reset_email");
-          sessionStorage.removeItem("pn_reset_dev_code");
+          localStorage.removeItem("pn_reset_email");
+          localStorage.removeItem("pn_reset_dev_code");
 
           toast({
             title: "تم تغيير كلمة المرور",

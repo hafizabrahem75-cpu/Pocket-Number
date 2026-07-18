@@ -33,14 +33,14 @@ export default function ForgotPassword() {
       {
         onSuccess: (res) => {
           // Persist email for the reset page to consume
-          sessionStorage.setItem("pn_reset_email", data.email);
+          localStorage.setItem("pn_reset_email", data.email);
 
           // In development, the server returns the code so the flow can be
           // tested without a real email provider.
           if (res.devCode) {
-            sessionStorage.setItem("pn_reset_dev_code", res.devCode);
+            localStorage.setItem("pn_reset_dev_code", res.devCode);
           } else {
-            sessionStorage.removeItem("pn_reset_dev_code");
+            localStorage.removeItem("pn_reset_dev_code");
           }
 
           setLocation("/reset-password");
