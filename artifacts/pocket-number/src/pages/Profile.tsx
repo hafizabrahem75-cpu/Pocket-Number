@@ -303,7 +303,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Verified */}
+              {/* V1: Verification row hidden — restore for V2 when email verification is live.
               <div
                 className={cn(
                   "p-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800",
@@ -341,6 +341,7 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
+              */}
 
               {/* Joined */}
               <div className="p-5 flex items-center gap-4">
@@ -359,7 +360,7 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Verification info dialog — shown when unverified user taps the badge */}
+      {/* V1: Verification dialog hidden — restore for V2 when email verification is live.
       <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
         <DialogContent className="max-w-[320px] rounded-2xl text-center" dir="rtl">
           <DialogHeader>
@@ -378,6 +379,7 @@ export default function Profile() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      */}
 
     </MobileLayout>
   );
