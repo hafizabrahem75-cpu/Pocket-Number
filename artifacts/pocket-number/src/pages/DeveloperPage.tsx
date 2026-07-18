@@ -8,7 +8,7 @@
 
 import { MobileLayout } from "@/components/MobileLayout";
 import { Link } from "wouter";
-import { ArrowRight, Phone, MessageCircle, MessageSquareText, Mail, Send } from "lucide-react";
+import { ArrowRight, Phone, MessageCircle, MessageSquareText, Mail } from "lucide-react";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
 
 // ── Contact constants — edit here only ───────────────────────────────────────
@@ -100,21 +100,6 @@ export default function DeveloperPage() {
               </div>
             </div>
 
-            {/* Contact details strip */}
-            <div className="border-t border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
-              <div className="px-5 py-3 flex items-center gap-3">
-                <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-mono text-foreground tracking-wide" dir="ltr">
-                  {DEVELOPER.phone}
-                </span>
-              </div>
-              <div className="px-5 py-3 flex items-center gap-3">
-                <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground break-all" dir="ltr">
-                  {DEVELOPER.email}
-                </span>
-              </div>
-            </div>
           </div>
 
           {/* Contact actions */}
