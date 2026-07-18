@@ -82,8 +82,9 @@ function CallHistoryRow({
   const { toast } = useToast();
   const kind = getCallKind(call, myId);
 
-  const displayName =
-    (peer && contactNameByPocketNumber.get(peer.pocketNumber)) || peer?.pocketNumber;
+  const contactName = peer ? contactNameByPocketNumber.get(peer.pocketNumber) : undefined;
+  const isKnown = contactName !== undefined;
+  const displayName = contactName ?? peer?.pocketNumber;
 
   const Icon = kind === "outgoing" ? PhoneOutgoing : kind === "missed" ? PhoneMissed : PhoneIncoming;
   const iconColor =
@@ -137,14 +138,21 @@ function CallHistoryRow({
           {isLoading ? (
             <div className="h-4 w-24 bg-muted rounded animate-pulse" />
           ) : (
-            <p
-              className={cn(
-                "font-semibold text-sm truncate",
-                kind === "missed" ? "text-destructive" : "text-foreground",
+            <div>
+              <p
+                className={cn(
+                  "font-semibold text-sm truncate",
+                  kind === "missed" ? "text-destructive" : "text-foreground",
+                )}
+              >
+                {isKnown ? displayName : "مستخدم غير معروف"}
+              </p>
+              {!isKnown && displayName && (
+                <p className="text-[10px] font-mono text-muted-foreground/60 leading-none -mt-0.5" dir="ltr">
+                  {displayName}
+                </p>
               )}
-            >
-              {displayName ?? "مستخدم غير معروف"}
-            </p>
+            </div>
           )}
           <p className="text-xs text-muted-foreground mt-0.5">
             {getCallKindLabel(call, myId)} · {formatCallDate(call.startTime)}

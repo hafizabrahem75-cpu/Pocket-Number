@@ -51,10 +51,12 @@ function Avatar({ name, unread }: { name: string; unread: number }) {
 function ConversationRow({
   conv,
   displayName,
+  isKnown,
   onOpen,
 }: {
   conv: ConversationListItem;
   displayName: string;
+  isKnown: boolean;
   onOpen: () => void;
 }) {
   const { unreadCount, lastMessage } = conv;
@@ -65,16 +67,21 @@ function ConversationRow({
       onClick={onOpen}
       className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/30 active:bg-muted/50 transition-colors text-right border-b border-border last:border-0"
     >
-      <Avatar name={displayName} unread={unreadCount} />
+      <Avatar name={isKnown ? displayName : "؟"} unread={unreadCount} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <p className={cn("font-semibold text-sm truncate", hasUnread ? "text-foreground" : "text-foreground/80")}>
-            {displayName}
+            {isKnown ? displayName : "مستخدم غير معروف"}
           </p>
           <span className="text-[11px] text-muted-foreground shrink-0">
             {formatRelativeTime(lastMessage.createdAt)}
           </span>
         </div>
+        {!isKnown && (
+          <p className="text-[10px] font-mono text-muted-foreground/60 leading-none mb-0.5" dir="ltr">
+            {displayName}
+          </p>
+        )}
         <p
           className={cn(
             "text-xs mt-0.5 truncate leading-relaxed",
@@ -289,13 +296,15 @@ export default function MessagesTab({
           ) : (
             <div>
               {conversations.map((conv) => {
-                const displayName =
-                  contactNameByPN.get(conv.peerPocketNumber) ?? conv.peerPocketNumber;
+                const contactName = contactNameByPN.get(conv.peerPocketNumber);
+                const isKnown = contactName !== undefined;
+                const displayName = contactName ?? conv.peerPocketNumber;
                 return (
                 <ConversationRow
                   key={conv.peerId}
                   conv={conv}
                   displayName={displayName}
+                  isKnown={isKnown}
                   onOpen={() =>
                     setOpenConv({
                       peerId: conv.peerId,
