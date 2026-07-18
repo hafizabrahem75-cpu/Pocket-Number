@@ -186,11 +186,13 @@ router.patch(
 
     const nextStatus = newStatus as "ongoing" | "ended" | "missed" | "declined";
 
+    const now = new Date();
     const [updated] = await db
       .update(callsTable)
       .set({
         status: nextStatus,
-        endedAt: TERMINAL_STATUSES.has(nextStatus) ? new Date() : call.endedAt,
+        answeredAt: nextStatus === "ongoing" ? now : call.answeredAt,
+        endedAt: TERMINAL_STATUSES.has(nextStatus) ? now : call.endedAt,
       })
       .where(
         and(
@@ -242,6 +244,7 @@ function serializeCall(c: typeof callsTable.$inferSelect) {
     receiverId: c.receiverId,
     status: c.status,
     startTime: c.startedAt.toISOString(),
+    answeredTime: c.answeredAt ? c.answeredAt.toISOString() : null,
     endTime: c.endedAt ? c.endedAt.toISOString() : null,
   };
 }

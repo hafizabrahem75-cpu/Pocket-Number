@@ -16,5 +16,7 @@ export interface CallItem {
   receiverId: number;
   status: CallItemStatus;
   startTime: Date;
+  /** When the receiver answered (status → ongoing). Null for missed/declined calls. */
+  answeredTime: Date | null;
   endTime: Date | null;
 }

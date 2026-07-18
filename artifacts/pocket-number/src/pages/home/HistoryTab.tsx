@@ -151,9 +151,9 @@ function CallHistoryRow({
           </p>
         </div>
 
-        {call.endTime && call.status === "ended" && (
+        {call.answeredTime && call.endTime && call.status === "ended" && (
           <span className="text-xs text-muted-foreground font-mono shrink-0" dir="ltr">
-            {formatDuration(call.startTime, call.endTime)}
+            {formatDuration(call.answeredTime, call.endTime)}
           </span>
         )}
 

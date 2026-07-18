@@ -229,6 +229,8 @@ export interface CallItem {
   receiverId: number;
   status: CallItemStatus;
   startTime: string;
+  /** When the receiver answered (status → ongoing). Null for missed/declined calls. */
+  answeredTime: string | null;
   endTime: string | null;
 }
 

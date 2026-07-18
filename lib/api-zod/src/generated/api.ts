@@ -265,6 +265,7 @@ export const StartCallResponse = zod.object({
   "receiverId": zod.number(),
   "status": zod.enum(['ringing', 'ongoing', 'ended', 'missed', 'declined']),
   "startTime": zod.coerce.date(),
+  "answeredTime": zod.coerce.date().nullable().describe('When the receiver answered (status → ongoing). Null for missed\/declined calls.'),
   "endTime": zod.coerce.date().nullable()
 }).describe('A single voice call record (metadata only — no audio\/WebRTC yet)')
 
@@ -283,6 +284,7 @@ export const GetCallHistoryResponse = zod.object({
   "receiverId": zod.number(),
   "status": zod.enum(['ringing', 'ongoing', 'ended', 'missed', 'declined']),
   "startTime": zod.coerce.date(),
+  "answeredTime": zod.coerce.date().nullable().describe('When the receiver answered (status → ongoing). Null for missed\/declined calls.'),
   "endTime": zod.coerce.date().nullable()
 }).describe('A single voice call record (metadata only — no audio\/WebRTC yet)')),
   "hasMore": zod.boolean(),
@@ -308,6 +310,7 @@ export const UpdateCallStatusResponse = zod.object({
   "receiverId": zod.number(),
   "status": zod.enum(['ringing', 'ongoing', 'ended', 'missed', 'declined']),
   "startTime": zod.coerce.date(),
+  "answeredTime": zod.coerce.date().nullable().describe('When the receiver answered (status → ongoing). Null for missed\/declined calls.'),
   "endTime": zod.coerce.date().nullable()
 }).describe('A single voice call record (metadata only — no audio\/WebRTC yet)')
 

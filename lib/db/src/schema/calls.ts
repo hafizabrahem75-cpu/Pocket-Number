@@ -3,7 +3,7 @@ import { pgTable, serial, integer, text, timestamp, index } from "drizzle-orm/pg
 import { usersTable } from "./users";
 
 /**
- * Voice call foundation (Phase 1 — no audio/WebRTC yet).
+ * Voice call foundation.
  *
  * Call lifecycle:
  *   ringing  → call created, receiver has not yet responded
@@ -13,7 +13,9 @@ import { usersTable } from "./users";
  *   declined → receiver explicitly rejected the call
  *
  * `startedAt` is set when the call is created (ringing begins).
+ * `answeredAt` is set when status transitions to "ongoing" (receiver answered).
  * `endedAt` is set once the call reaches a terminal state (ended, missed, declined).
+ * Call duration = answeredAt → endedAt; startedAt → endedAt includes ringing time.
  * Audio transport (WebRTC signaling, SDP/ICE, media servers) is intentionally
  * out of scope — this table only tracks call metadata/history.
  */
@@ -41,6 +43,9 @@ export const callsTable = pgTable(
 
     /** When the call was initiated (ringing began). */
     startedAt: timestamp("started_at").notNull().defaultNow(),
+
+    /** When the receiver answered (status → ongoing). Null until then. */
+    answeredAt: timestamp("answered_at"),
 
     /** When the call reached a terminal state. Null while ringing/ongoing. */
     endedAt: timestamp("ended_at"),
