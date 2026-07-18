@@ -20,6 +20,7 @@ import ResetPassword from '@/pages/ResetPassword';
 import HomeShell from '@/pages/home/HomeShell';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
+import DeveloperPage from '@/pages/DeveloperPage';
 import SearchPage from '@/pages/SearchPage';
 import NotFound from '@/pages/not-found';
 
@@ -53,6 +54,9 @@ function Router() {
       </Route>
       <Route path="/search">
         {() => <ProtectedRoute component={SearchPage} />}
+      </Route>
+      <Route path="/developer">
+        {() => <ProtectedRoute component={DeveloperPage} />}
       </Route>
       
       <Route component={NotFound} />

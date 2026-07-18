@@ -14,9 +14,6 @@ import {
   LogOut,
   Loader2,
   Code2,
-  Phone,
-  MessageCircle,
-  MessageSquareText,
   X,
   Languages,
   Moon,
@@ -28,16 +25,11 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-// Kept out of the DOM/UI on purpose — never rendered, only used to build the
-// tel:/wa.me/sms: links below.
-const DEVELOPER_PHONE = "+967717245252";
+import { DEVELOPER } from "@/pages/DeveloperPage";
 
 type Copy = {
   title: string;
   profile: string;
-  developerInfo: string;
-  developerName: string;
   developerHint: string;
   appSettings: string;
   aboutApp: string;
@@ -47,11 +39,6 @@ type Copy = {
   themeHint: string;
   logout: string;
   version: string;
-  call: string;
-  whatsapp: string;
-  sms: string;
-  close: string;
-  contactTitle: string;
   pocketNumber: string;
   email: string;
   name: string;
@@ -66,9 +53,7 @@ const copy: Record<"ar" | "en", Copy> = {
   ar: {
     title: "الإعدادات",
     profile: "الحساب",
-    developerInfo: "المطور",
-    developerName: "حافظ السراء",
-    developerHint: "اضغط للتواصل",
+    developerHint: "اضغط لعرض الصفحة",
     appSettings: "إعدادات التطبيق",
     aboutApp: "حول التطبيق",
     language: "اللغة",
@@ -77,11 +62,6 @@ const copy: Record<"ar" | "en", Copy> = {
     themeHint: "الوضع الداكن",
     logout: "تسجيل الخروج",
     version: "الإصدار 1.0.0",
-    call: "مكالمة",
-    whatsapp: "واتساب",
-    sms: "رسالة نصية",
-    close: "إغلاق",
-    contactTitle: "التواصل مع المطور",
     pocketNumber: "رقم الجيب",
     email: "البريد الإلكتروني",
     name: "الاسم",
@@ -94,9 +74,7 @@ const copy: Record<"ar" | "en", Copy> = {
   en: {
     title: "Settings",
     profile: "Account",
-    developerInfo: "Developer",
-    developerName: "حافظ السراء",
-    developerHint: "Tap to contact",
+    developerHint: "Tap to view page",
     appSettings: "App Settings",
     aboutApp: "About",
     language: "Language",
@@ -105,11 +83,6 @@ const copy: Record<"ar" | "en", Copy> = {
     themeHint: "Dark appearance",
     logout: "Log Out",
     version: "Version 1.0.0",
-    call: "Call",
-    whatsapp: "WhatsApp",
-    sms: "SMS",
-    close: "Close",
-    contactTitle: "Contact Developer",
     pocketNumber: "Pocket Number",
     email: "Email",
     name: "Name",
@@ -120,47 +93,6 @@ const copy: Record<"ar" | "en", Copy> = {
     deleteAccountHint: "Permanently remove your account",
   },
 } as const;
-
-// ── Developer contact sheet ──────────────────────────────────────────────────
-
-function DeveloperContactSheet({ onClose, t }: { onClose: () => void; t: Copy }) {
-  const waNumber = DEVELOPER_PHONE.replace(/[^\d]/g, "");
-  const actions = [
-    { label: t.call, icon: Phone, href: `tel:${DEVELOPER_PHONE}` },
-    { label: t.whatsapp, icon: MessageCircle, href: `https://wa.me/${waNumber}` },
-    { label: t.sms, icon: MessageSquareText, href: `sms:${DEVELOPER_PHONE}` },
-  ];
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="w-full sm:max-w-[340px] bg-background rounded-t-3xl sm:rounded-3xl p-6 space-y-4 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <p className="font-bold text-base">{t.contactTitle}</p>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label={t.close}>
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="space-y-2">
-          {actions.map(({ label, icon: Icon, href }) => (
-            <a
-              key={label}
-              href={href}
-              className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-            >
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Icon className="w-5 h-5" />
-              </div>
-              <span className="font-semibold">{label}</span>
-            </a>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Change-password sheet ────────────────────────────────────────────────────
 
@@ -447,7 +379,6 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const logoutMutation = useLogout();
   const { theme, language, setTheme, setLanguage } = useAppSettings();
-  const [showDeveloperContact, setShowDeveloperContact] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const { data: me } = useGetMe();
@@ -613,22 +544,22 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* Developer */}
-              <div
-                className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-                onClick={() => setShowDeveloperContact(true)}
+              {/* Developer — navigates to the full developer page */}
+              <Link
+                href="/developer"
+                className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     <Code2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold">{t.developerName}</div>
+                    <div className="font-bold">{DEVELOPER.name}</div>
                     <div className="text-xs text-muted-foreground">{t.developerHint}</div>
                   </div>
                 </div>
                 <ChevronLeft className="w-5 h-5 text-muted-foreground" />
-              </div>
+              </Link>
             </div>
           </div>
 
@@ -652,9 +583,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {showDeveloperContact && (
-        <DeveloperContactSheet onClose={() => setShowDeveloperContact(false)} t={t} />
-      )}
       {showChangePassword && (
         <ChangePasswordSheet onClose={() => setShowChangePassword(false)} language={language} />
       )}
