@@ -37,5 +37,18 @@
 
     <!-- Permissions -->
 
+    <!-- Network: all API calls, WebSocket signaling, WebRTC ICE/STUN/TURN -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Network state: WebRTC ICE restart logic and WebSocket reconnection -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Microphone: WebRTC audio capture (getUserMedia) during calls -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Audio routing: WebRTC audio focus and speaker/earpiece switching -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Vibration: incoming call ring pattern via navigator.vibrate() -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Wake lock: keep CPU alive so audio does not cut out when screen turns off -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Push notifications: required on Android 13+ (API 33) for FCM -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
