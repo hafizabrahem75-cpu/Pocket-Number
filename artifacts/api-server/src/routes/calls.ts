@@ -28,7 +28,7 @@ router.get("/calls/ice-config", requireAuth, (_req: AuthRequest, res): void => {
   const username = process.env.TURN_USERNAME;
   const credential = process.env.TURN_CREDENTIAL;
 
-  const iceServers: RTCIceServer[] = [
+  const iceServers: { urls: string; username?: string; credential?: string }[] = [
     { urls: "stun:stun.l.google.com:19302" },
   ];
 
