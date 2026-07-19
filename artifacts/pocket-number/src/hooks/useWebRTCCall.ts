@@ -36,6 +36,22 @@ interface UseWebRTCCallOptions {
 const STUN_ONLY: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
 /**
+ * The HTTP origin of the API server.
+ *
+ * In web browsers `window.location.origin` is always correct because the
+ * frontend and the API are served from the same origin.
+ *
+ * In a Capacitor Android WebView `window.location.origin` is
+ * `capacitor://localhost`, which is not a reachable network address.
+ * Setting VITE_API_BASE_URL at build time (e.g. `https://myserver.com`)
+ * overrides the origin so both the ICE-config fetch and the WebSocket
+ * signaling URL resolve to the real server.
+ */
+const API_ORIGIN: string = import.meta.env.VITE_API_BASE_URL
+  ? new URL(import.meta.env.VITE_API_BASE_URL as string).origin
+  : window.location.origin;
+
+/**
  * Fetch the ICE server list from the backend. The endpoint returns STUN +
  * TURN (UDP/TCP/TLS) when TURN credentials are configured, or STUN-only when
  * they are not. Falls back to STUN-only on any network / auth error so a
@@ -43,7 +59,7 @@ const STUN_ONLY: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
  */
 async function fetchIceServers(token: string): Promise<RTCIceServer[]> {
   try {
-    const res = await fetch(`${window.location.origin}/api/calls/ice-config`, {
+    const res = await fetch(`${API_ORIGIN}/api/calls/ice-config`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return STUN_ONLY;
@@ -64,8 +80,9 @@ const RETRY_CHECK_MS = 3000;
 const MAX_RETRY_WINDOW_MS = 15000;
 
 function buildSignalingUrl(token: string): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/ws/calls?token=${encodeURIComponent(token)}`;
+  const u = new URL(API_ORIGIN);
+  const protocol = u.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${u.host}/api/ws/calls?token=${encodeURIComponent(token)}`;
 }
 
 /** Map WebRTC connection state to a coarse, cheap-to-compute quality label. */
