@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { Phone, MessageCircle, Users, Clock, Search, MoreVertical, User, Settings } from "lucide-react";
 import { useHeartbeatPing } from "@/hooks/useHeartbeatPing";
 import { useFcmToken } from "@/hooks/useFcmToken";
+import { useNativePush } from "@/hooks/useNativePush";
 import { useGetInbox, useGetCallHistory } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,7 +36,8 @@ export default function HomeShell() {
   const { pendingTarget, consumePendingTarget } = useChatLauncher();
   const [, setLocation] = useLocation();
   useHeartbeatPing();
-  useFcmToken();
+  useFcmToken();       // web push (browser service worker)
+  useNativePush();     // native Android push (Capacitor FCM)
 
   // Badge counts — derived from existing queries; no new polling or network requests.
   const { data: inboxData } = useGetInbox();
