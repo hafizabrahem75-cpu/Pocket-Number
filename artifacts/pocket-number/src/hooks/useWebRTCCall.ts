@@ -36,20 +36,24 @@ interface UseWebRTCCallOptions {
 const STUN_ONLY: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
 /**
- * The HTTP origin of the API server.
+ * Returns the HTTP origin of the API server, evaluated lazily (inside each
+ * call-site) so that no URL parsing runs during module initialisation.
  *
- * In web browsers `window.location.origin` is always correct because the
- * frontend and the API are served from the same origin.
- *
- * In a Capacitor Android WebView `window.location.origin` is
- * `capacitor://localhost`, which is not a reachable network address.
- * Setting VITE_API_BASE_URL at build time (e.g. `https://myserver.com`)
- * overrides the origin so both the ICE-config fetch and the WebSocket
- * signaling URL resolve to the real server.
+ * In web browsers `window.location.origin` is always correct.
+ * In a Capacitor Android WebView set VITE_API_BASE_URL at build time
+ * (e.g. `https://myserver.com`) to override the origin.
  */
-const API_ORIGIN: string = import.meta.env.VITE_API_BASE_URL
-  ? new URL(import.meta.env.VITE_API_BASE_URL as string).origin
-  : window.location.origin;
+function getApiOrigin(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      // Invalid URL — fall through to window.location.origin
+    }
+  }
+  return window.location.origin;
+}
 
 /**
  * Fetch the ICE server list from the backend. The endpoint returns STUN +
@@ -59,7 +63,7 @@ const API_ORIGIN: string = import.meta.env.VITE_API_BASE_URL
  */
 async function fetchIceServers(token: string): Promise<RTCIceServer[]> {
   try {
-    const res = await fetch(`${API_ORIGIN}/api/calls/ice-config`, {
+    const res = await fetch(`${getApiOrigin()}/api/calls/ice-config`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return STUN_ONLY;
@@ -80,7 +84,7 @@ const RETRY_CHECK_MS = 3000;
 const MAX_RETRY_WINDOW_MS = 15000;
 
 function buildSignalingUrl(token: string): string {
-  const u = new URL(API_ORIGIN);
+  const u = new URL(getApiOrigin());
   const protocol = u.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${u.host}/api/ws/calls?token=${encodeURIComponent(token)}`;
 }
